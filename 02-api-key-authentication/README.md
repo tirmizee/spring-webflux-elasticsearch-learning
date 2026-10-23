@@ -8,21 +8,20 @@
 - [Overview](#-overview)
 - [Learning Objectives](#-learning-objectives)
 - [Prerequisites](#-prerequisites)
-- [Basic Authentication vs API Key Authentication](#-basic-authentication-vs-api-key-authentication)
+- [Basic Auth vs API Key](#-basic-auth-vs-api-key)
 - [How API Key Authentication Works](#-how-api-key-authentication-works)
 - [Project Structure](#-project-structure)
 - [Configuration](#-configuration)
 - [Getting Started](#-getting-started)
 - [Create and Configure API Key](#-create-and-configure-api-key)
 - [API Examples](#-api-examples)
-- [Authentication vs Authorization (401/403)](#-authentication-vs-authorization-401403)
+- [Authentication vs Authorization (401 / 403)](#-authentication-vs-authorization-401--403)
 - [Testing](#-testing)
-- [Troubleshooting](#-troubleshooting)
-- [Security Considerations](#-security-considerations)
+- [Troubleshooting & Security Considerations](#-troubleshooting--security-considerations)
 - [Cleanup](#-cleanup)
 - [Key Takeaways](#-key-takeaways)
 
-## 🧭 Overview
+## 🔐 Overview
 ต่อยอดจาก Chapter 01 (เชื่อมต่อแบบไม่มี auth) มาเป็นการเชื่อมต่อ Elasticsearch ที่ **เปิด security** จริง
 แอปเรียก **cluster health** และ **cluster info** ด้วยทั้งสอง client ที่ authenticate ด้วย **API key เดียวกัน**
 ผ่าน property ของ Spring Boot โดยไม่ hardcode และไม่ log ค่า key
@@ -40,7 +39,7 @@
 - Docker + Docker Compose
 - `curl` และ `jq` (สำหรับตัวอย่างใน README)
 
-## 🔑 Basic Authentication vs API Key Authentication
+## 🧠 Basic Auth vs API Key
 
 | หัวข้อ | Basic Authentication | API Key Authentication |
 |---|---|---|
@@ -201,7 +200,7 @@ java -jar target/api-key-authentication.jar
 
 **9) หยุดและเก็บกวาด** — ดู [Cleanup](#-cleanup)
 
-## 🔐 Create and Configure API Key
+## 🔑 Create and Configure API Key
 สร้าง key ด้วย `elastic` superuser พร้อมจำกัดสิทธิ์เท่าที่บทนี้ต้องใช้ (cluster health/info → `cluster:["monitor"]`):
 ```bash
 export ELASTIC_PASSWORD='local-dev-password'
@@ -231,7 +230,7 @@ curl -s -u "elastic:${ELASTIC_PASSWORD}" -H 'Content-Type: application/json' \
 > ⚠️ แอปใช้ค่า **`encoded`** ไม่ใช่ `api_key` ดิบ — ใส่ผิดตัวจะได้ 401
 > อย่า commit ค่า key จริง และอย่า log ค่า key / Authorization header
 
-## 📡 API Examples
+## 🌐 API Examples
 ทุก endpoint เป็น `GET` และต้องมี API key ที่ถูกต้อง (มิฉะนั้นได้ 401/403) base URL: `http://127.0.0.1:8081`
 
 ### Spring Data Elasticsearch
@@ -273,7 +272,7 @@ curl --fail-with-body -s http://127.0.0.1:8081/api/java-client/elasticsearch/clu
 > ทั้งสอง client ติดต่อ cluster เดียวกัน ค่าจึงตรงกัน ต่างแค่ field `client`
 > ค่า **dynamic**: `clusterUuid` สุ่มใหม่ต่อ cluster, `clusterName` = `docker-cluster` (ดีฟอลต์ image), `status` ∈ `green`/`yellow`/`red`, `versionNumber` = `9.4.8` (pin image)
 
-## 🔒 Authentication vs Authorization (401/403)
+## 🛡️ Authentication vs Authorization (401 / 403)
 `GlobalExceptionHandler` จำแนก error ตามสาเหตุจริง และ body เป็น generic `ProblemDetail` เสมอ (ไม่ leak key/host/uri/stack trace)
 
 | กรณี | HTTP status | title |
@@ -322,7 +321,9 @@ mvn clean verify
 - **Integration tests** (failsafe, `ApiKeyAuthenticationIT`): สตาร์ต Elasticsearch 9.4.8 ที่ **เปิด security** จริงด้วย Testcontainers → สร้าง API key จริง → ยืนยันทั้งสอง client auth ผ่าน + เคส invalid key ได้ 401
 - **ต้องเปิด Docker daemon** เพราะ integration test ใช้ Testcontainers — ถ้า Docker ไม่ทำงาน `mvn clean verify` จะไม่ผ่าน
 
-## 🩺 Troubleshooting
+## ⚠️ Troubleshooting & Security Considerations
+
+### Troubleshooting
 - **Elasticsearch ยังไม่พร้อม / สร้าง key ได้ 401**: security ใช้เวลา init — รอจน `-u elastic:... /_cluster/health` ตอบ 200 ก่อนค่อยสร้าง key
 - **แอปได้ 401 ทั้งที่คิดว่า key ถูก**: ตรวจว่าใช้ค่า **`encoded`** (ไม่ใช่ `api_key` ดิบ) และ env ถูกส่งเข้า process จริง
 - **แอปได้ 403**: key สิทธิ์ไม่พอ — เพิ่ม `cluster:["monitor"]` ใน `role_descriptors`
@@ -330,7 +331,7 @@ mvn clean verify
 - **พอร์ตชน** (`9200`/`8081`): แก้ `SERVER_PORT` หรือ mapping ใน `docker-compose.yml`
 - **Docker ไม่พร้อม**: integration test และคำสั่ง cURL จะล้มเหลว — เปิด Docker daemon ก่อน
 
-## 🛡️ Security Considerations
+### Security Considerations
 - บทนี้ปิด TLS บน HTTP layer (`xpack.security.http.ssl.enabled=false`) **เพื่อความง่ายใน local เท่านั้น** — production **ต้องเปิด HTTPS** เสมอ ไม่งั้น API key ถูกส่งแบบ clear text
 - bind `127.0.0.1` เท่านั้น ห้าม expose node ออกนอกเครื่อง
 - ใช้ **least-privilege** กับ API key เสมอ (บทนี้ให้แค่ `cluster:monitor`)
@@ -349,7 +350,7 @@ export ELASTIC_PASSWORD='local-dev-password'
 docker compose -p ch02 down   # ลบ container + network (ไม่มี persistent volume)
 ```
 
-## 💡 Key Takeaways
+## 📌 Key Takeaways
 - API key เหมาะกับ service-to-service มากกว่าการฝัง credential ของ superuser; จำกัดสิทธิ์ด้วย `role_descriptors`
 - Spring Boot ตั้ง auth ให้ทั้งสอง client ด้วย property เดียว (`spring.elasticsearch.api-key`) — ใช้ค่า `encoded`
 - แยก **401 (authentication)** กับ **403 (authorization)** ให้ชัด และตอบ error แบบ generic ที่ไม่ leak ข้อมูล
