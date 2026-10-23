@@ -50,6 +50,16 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
+        <!--
+            Lombok: used only on the Product document entity to remove getter/setter/constructor
+            boilerplate. Version is managed by the Spring Boot BOM. Compile-time only (not shipped).
+        -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!-- Test dependencies -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

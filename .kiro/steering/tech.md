@@ -33,6 +33,19 @@ Applies to all current and future learning chapters.
 - Do not introduce wildcard imports merely to shorten code.
 - Do not change otherwise-correct application logic solely for stylistic consistency; this is a readability convention, not a mandate to refactor working code.
 
+## Lombok Usage Guidelines
+Applies to all current and future learning chapters. Lombok is **optional, not mandatory** — a tool to remove genuine boilerplate, never added for uniformity.
+- Prefer **Java records** for immutable DTOs; do not replace a record with a Lombok class.
+- Use Lombok **only where it meaningfully reduces boilerplate** (e.g. an entity with many getters/setters/constructors). Having zero Lombok in a chapter is a valid outcome.
+- Prefer **targeted annotations** (`@Getter`, `@Setter`, `@NoArgsConstructor`, `@AllArgsConstructor`, `@RequiredArgsConstructor`, `@Slf4j`) over `@Data`.
+- `@RequiredArgsConstructor` is appropriate for straightforward constructor injection with `final` fields; **preserve an explicit constructor when it contains custom initialization logic** (do not replace it).
+- `@Slf4j` is appropriate for ordinary SLF4J logger declarations; do not change log levels, messages, or error handling.
+- Use `@Getter`/`@Setter` only for properties that genuinely need them; keep DTOs immutable where possible.
+- Avoid `@Builder` without a real need, avoid `@SneakyThrows` (do not hide checked exceptions), and do not introduce mutable state unnecessarily.
+- Ensure compatibility with Spring Boot, Java 21, serialization frameworks (Jackson), and Spring Data Elasticsearch mappings; keep mapping annotations (`@Document`, `@Id`, `@Field`) and `_id` handling intact.
+- When introducing Lombok to a chapter, add the `org.projectlombok:lombok` dependency **only to that chapter** (optional/compile-time scope), use the **Spring Boot BOM-managed version** (do not hardcode), and verify a clean `mvn clean verify`.
+- Do not refactor previously completed chapters to add Lombok without explicit user approval.
+
 ## Client compatibility
 - Verify Spring Data Elasticsearch supports the chosen Elasticsearch server release; do not select the Elasticsearch Docker image by latest-tag guessing.
 - Match local/no-auth Chapter 01's actual HTTP/TLS settings. API key Chapter 02 must explicitly explain HTTPS, secure key handling, creation/privileges and client configuration.

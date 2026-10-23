@@ -1,5 +1,9 @@
 package com.example.learning.documentcrud.domain;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
@@ -21,8 +25,22 @@ import java.math.BigDecimal;
  *     <li>{@code price}: {@code double}</li>
  *     <li>{@code quantity}: {@code integer}</li>
  * </ul>
+ *
+ * <p>This is a mutable entity, not a record: Spring Data Elasticsearch and the official Java API
+ * Client (via Jackson) need a no-args constructor and setters to deserialize documents, and the
+ * services set the id after a real-time GET. Lombok supplies that boilerplate with targeted
+ * annotations while the Elasticsearch mapping annotations stay on the fields:
+ * <ul>
+ *     <li>{@code @Getter}/{@code @Setter} — accessors required for serialization/deserialization</li>
+ *     <li>{@code @NoArgsConstructor} — required by the mapping/serialization frameworks</li>
+ *     <li>{@code @AllArgsConstructor} — used by the services to build a Product from a request</li>
+ * </ul>
  */
 @Document(indexName = "learning-products")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class Product {
 
     @Id
@@ -39,55 +57,4 @@ public class Product {
 
     @Field(type = FieldType.Integer)
     private Integer quantity;
-
-    public Product() {
-    }
-
-    public Product(String id, String name, String description, BigDecimal price, Integer quantity) {
-        this.id = id;
-        this.name = name;
-        this.description = description;
-        this.price = price;
-        this.quantity = quantity;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public BigDecimal getPrice() {
-        return price;
-    }
-
-    public void setPrice(BigDecimal price) {
-        this.price = price;
-    }
-
-    public Integer getQuantity() {
-        return quantity;
-    }
-
-    public void setQuantity(Integer quantity) {
-        this.quantity = quantity;
-    }
 }

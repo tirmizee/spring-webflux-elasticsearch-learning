@@ -89,3 +89,32 @@ Failsafe (integration) — `integration.ProductCrudIT` — **7**, 0 failures (or
 
 ## Overall status
 **COMPLETED** — `mvn clean verify` passes with **26 unit + 7 integration** tests against a real security-enabled Elasticsearch 9.4.8 using a least-privilege API key; real cURL confirms every required status code (201/200/204/404/409/400) across both clients with cross-client consistency; no credential leakage observed. Chapters 01 and 02 are untouched; Chapter 03 runs independently.
+
+---
+
+# Chapter 03 Re-verification — Lombok on Product entity
+
+> Separate verification entry for the change that introduced Lombok (`@Getter`/`@Setter`/
+> `@NoArgsConstructor`/`@AllArgsConstructor`) on the `Product` document entity. The original
+> verification report above is preserved unchanged.
+
+- **Timestamp (with timezone):** 2026-10-23 23:52:26 +07 (ICT, Asia/Bangkok)
+- **Source revision:** branch `main`, repository HEAD `4466513` at the time of this run; the Lombok
+  change was verified from the **uncommitted working tree** on top of `4466513` (not yet committed).
+- **Environment:** macOS (arm64); Java OpenJDK Temurin 21.0.2; Maven 3.9.9 (via `JAVA_HOME` → 21);
+  Docker 25.0.2 (Testcontainers). Lombok 1.18.48 (version managed by the Spring Boot 4.1.2 BOM; not hardcoded).
+- **Change under test:** `Product.java` now uses targeted Lombok annotations instead of hand-written
+  getters/setters/constructors; Elasticsearch mapping annotations (`@Document`, `@Id`, `@Field`) and
+  `_id` handling are unchanged. `org.projectlombok:lombok` added to this chapter's `pom.xml` (optional scope).
+- **Command executed:** `mvn clean verify` (from `03-document-crud`).
+- **Result:** `BUILD SUCCESS`.
+  - Note: a first run errored at the integration phase because the Docker daemon was not running
+    (Testcontainers could not start). After starting Docker, `mvn clean verify` was re-run and passed.
+- **Test counts (this run):**
+  - Unit (Surefire): **26**, 0 failures — controller 5 + 8, service 6 + 7 (unchanged from the original run).
+  - Integration (Failsafe, `ProductCrudIT`, real secured ES 9.4.8 via Testcontainers): **7**, 0 failures.
+- **Behavior preservation:** identical test counts and all green; the integration flow exercises
+  cross-client create/read/update/delete, which relies on `Product` getters/setters/constructors —
+  now Lombok-generated — confirming serialization/deserialization and `_id` handling are unchanged.
+  No REST endpoint, response contract, mapping, or query behavior changed.
+- **Status:** PASS.
