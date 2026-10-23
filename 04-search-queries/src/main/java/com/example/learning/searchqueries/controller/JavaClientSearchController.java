@@ -10,11 +10,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ServerWebInputException;
 import reactor.core.publisher.Mono;
 
 /**
  * Search endpoints backed by the official Elasticsearch Java API Client. Observable behavior
- * mirrors the Spring Data controller exactly (same queries, same response shape).
+ * mirrors the Spring Data controller exactly (same queries, same response shape, same validation).
+ *
+ * <p>Required query parameters must be present and non-blank; a missing or blank parameter yields
+ * HTTP 400 (via {@link ServerWebInputException}, handled centrally) before any Elasticsearch call.
  *
  * <ul>
  *     <li>{@code GET  /api/java-client/products/search/term?field=&value=}</li>
@@ -34,12 +38,22 @@ public class JavaClientSearchController {
 
     @GetMapping("/term")
     public Mono<SearchResponse> term(@RequestParam String field, @RequestParam String value) {
+        requireNonBlank("field", field);
+        requireNonBlank("value", value);
         return service.term(field, value);
     }
 
     @GetMapping("/match")
     public Mono<SearchResponse> match(@RequestParam String field, @RequestParam String text) {
+        requireNonBlank("field", field);
+        requireNonBlank("text", text);
         return service.match(field, text);
+    }
+
+    private static void requireNonBlank(String name, String value) {
+        if (value == null || value.isBlank()) {
+            throw new ServerWebInputException(name + " must not be blank");
+        }
     }
 
     @PostMapping("/bool")

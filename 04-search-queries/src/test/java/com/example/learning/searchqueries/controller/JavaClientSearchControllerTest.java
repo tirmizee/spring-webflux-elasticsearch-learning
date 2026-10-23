@@ -17,6 +17,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /** Mirrors the Spring Data controller test to confirm both clients expose identical behavior. */
@@ -84,5 +85,43 @@ class JavaClientSearchControllerTest {
                 .contentType(MediaType.APPLICATION_JSON).bodyValue(body)
                 .exchange()
                 .expectStatus().isBadRequest();
+    }
+
+    @Test
+    void boolNegativeMinimumShouldMatchReturns400AndSkipsService() {
+        String body = """
+                {"must":[{"type":"term","field":"category","value":"laptop"}],"minimumShouldMatch":-2}
+                """;
+        webTestClient.post().uri("/api/java-client/products/search/bool")
+                .contentType(MediaType.APPLICATION_JSON).bodyValue(body)
+                .exchange()
+                .expectStatus().isBadRequest();
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void termWhitespaceFieldReturns400AndSkipsService() {
+        webTestClient.get()
+                .uri(b -> b.path("/api/java-client/products/search/term")
+                        .queryParam("field", " ").queryParam("value", "Dell").build())
+                .exchange()
+                .expectStatus().isBadRequest();
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void termMissingValueReturns400() {
+        webTestClient.get().uri("/api/java-client/products/search/term?field=brand")
+                .exchange()
+                .expectStatus().isBadRequest();
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void matchEmptyTextReturns400() {
+        webTestClient.get().uri("/api/java-client/products/search/match?field=name&text=")
+                .exchange()
+                .expectStatus().isBadRequest();
+        verifyNoInteractions(service);
     }
 }

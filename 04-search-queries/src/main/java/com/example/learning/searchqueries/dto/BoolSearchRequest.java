@@ -1,6 +1,7 @@
 package com.example.learning.searchqueries.dto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 
 import java.util.List;
 // Note: @Valid is applied to the list type argument (List<@Valid QueryClause>) so nested clause
@@ -16,11 +17,17 @@ import java.util.List;
  *     <li>{@code minimumShouldMatch} — how many {@code should} clauses must match (optional)</li>
  * </ul>
  * All lists are optional; a null list is treated as empty.
+ *
+ * <p>{@code minimumShouldMatch} is optional. This chapter deliberately exposes only a simplified
+ * <strong>non-negative integer</strong> API ({@code null}/0/positive accepted; negative → HTTP 400).
+ * Elasticsearch itself supports a richer {@code minimum_should_match} syntax (percentages and
+ * negative expressions); that is out of scope here.
  */
 public record BoolSearchRequest(
         List<@Valid QueryClause> must,
         List<@Valid QueryClause> should,
         List<@Valid QueryClause> mustNot,
+        @Min(value = 0, message = "minimumShouldMatch must be >= 0")
         Integer minimumShouldMatch
 ) {
     public List<QueryClause> mustOrEmpty() {

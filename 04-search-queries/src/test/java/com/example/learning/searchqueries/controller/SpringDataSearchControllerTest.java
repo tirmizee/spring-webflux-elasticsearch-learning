@@ -18,6 +18,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @WebFluxTest(controllers = SpringDataSearchController.class)
@@ -101,5 +102,84 @@ class SpringDataSearchControllerTest {
                 .exchange()
                 .expectStatus().isBadRequest()
                 .expectBody().jsonPath("$.title").isEqualTo("Invalid request");
+    }
+
+    // ---- Finding #2: minimumShouldMatch validation ----
+
+    @Test
+    void boolNegativeMinimumShouldMatchReturns400AndSkipsService() {
+        String body = """
+                {"must":[{"type":"term","field":"category","value":"laptop"}],"minimumShouldMatch":-1}
+                """;
+        webTestClient.post().uri("/api/spring-data/products/search/bool")
+                .contentType(MediaType.APPLICATION_JSON).bodyValue(body)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.title").isEqualTo("Invalid request");
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void boolZeroMinimumShouldMatchIsAccepted() {
+        when(service.bool(any())).thenReturn(Mono.just(SearchResponse.of("spring-data", List.of(hit("p01")))));
+        String body = """
+                {"must":[{"type":"term","field":"category","value":"laptop"}],"minimumShouldMatch":0}
+                """;
+        webTestClient.post().uri("/api/spring-data/products/search/bool")
+                .contentType(MediaType.APPLICATION_JSON).bodyValue(body)
+                .exchange()
+                .expectStatus().isOk();
+    }
+
+    @Test
+    void boolPositiveMinimumShouldMatchIsAccepted() {
+        when(service.bool(any())).thenReturn(Mono.just(SearchResponse.of("spring-data", List.of(hit("p01")))));
+        String body = """
+                {"must":[{"type":"term","field":"category","value":"laptop"}],
+                 "should":[{"type":"match","field":"name","value":"pro"}],"minimumShouldMatch":1}
+                """;
+        webTestClient.post().uri("/api/spring-data/products/search/bool")
+                .contentType(MediaType.APPLICATION_JSON).bodyValue(body)
+                .exchange()
+                .expectStatus().isOk();
+    }
+
+    // ---- Finding #3: GET parameter validation ----
+
+    @Test
+    void termWhitespaceFieldReturns400AndSkipsService() {
+        webTestClient.get()
+                .uri(b -> b.path("/api/spring-data/products/search/term")
+                        .queryParam("field", " ").queryParam("value", "laptop").build())
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.title").isEqualTo("Invalid request");
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void termEmptyValueReturns400() {
+        webTestClient.get().uri("/api/spring-data/products/search/term?field=category&value=")
+                .exchange()
+                .expectStatus().isBadRequest();
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void termMissingFieldReturns400() {
+        webTestClient.get().uri("/api/spring-data/products/search/term?value=laptop")
+                .exchange()
+                .expectStatus().isBadRequest();
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void matchWhitespaceTextReturns400() {
+        webTestClient.get()
+                .uri(b -> b.path("/api/spring-data/products/search/match")
+                        .queryParam("field", "name").queryParam("text", "  ").build())
+                .exchange()
+                .expectStatus().isBadRequest();
+        verifyNoInteractions(service);
     }
 }

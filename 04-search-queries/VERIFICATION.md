@@ -83,3 +83,57 @@ Failsafe (integration) — `integration.SearchQueriesIT` — **11**, 0 failures 
 
 ## Overall status
 **COMPLETED** — `mvn clean verify` passes with **17 unit + 11 integration** tests against a real security-enabled Elasticsearch 9.4.8 using a least-privilege API key; real cURL confirms term (exact hit/miss), match (full-text), and bool (must/should/must_not/minimum_should_match) behavior across both clients with cross-client consistency and empty-result-as-200. No credential leakage. Chapters 01–03 untouched; Chapter 04 runs independently.
+
+---
+
+# Chapter 04 Re-verification — input validation (findings #2 and #3)
+
+> Separate entry for the change that added input validation: non-negative `minimumShouldMatch`
+> (bool request) and non-blank required GET parameters (`field`/`value`/`text`). The original
+> verification report above is preserved unchanged.
+
+- **Timestamp (with timezone):** 2026-10-24 01:06:31 +07 (ICT, Asia/Bangkok)
+- **Source revision:** branch `main`, repository HEAD `0522ec3` (`feat(04-search-queries): add term/match/bool search chapter`) at the time of this run; the validation change was verified from the **uncommitted working tree** on top of `0522ec3`.
+- **Environment:** Java 21.0.2; Maven 3.9.9 (JAVA_HOME→21); Spring Boot 4.1.2; Spring Data ES 6.1.2; ES client/server 9.4.8; Testcontainers 2.0.5; Docker 25.0.2.
+- **Change under test:**
+  - `BoolSearchRequest.minimumShouldMatch` annotated `@Min(0)` (nested in `@RequestBody` → `WebExchangeBindException` → existing 400 handler).
+  - GET `term`/`match` params validated explicitly in both controllers (`field`/`value`/`text` non-blank) by throwing `ServerWebInputException` (mapped to 400) before any Elasticsearch call. No DTOs added; `ProductQueries`, search semantics, reactive/blocking behavior, mappings, seeding, endpoint paths, and `SearchResponse` unchanged.
+  - Implementation note: `@NotBlank` on `@RequestParam` with `@Validated` was initially tried but method-level param validation did not reliably trigger 400 in WebFlux here, so explicit non-blank checks were used instead (deterministic, verified below). An unused `HandlerMethodValidationException` handler added during that attempt was removed.
+- **Commands executed:** `mvn clean verify` (from `04-search-queries`); docker compose up/down; real cURL.
+
+## Gate results (this run)
+| Gate | Expected | Actual | Status |
+|---|---|---|---|
+| Maven compile | success | success | PASS |
+| Unit tests (surefire) | pass | 28 tests, 0 failures | PASS |
+| Integration tests (failsafe, real secured ES) | pass | 11 tests, 0 failures | PASS |
+| Full `mvn clean verify` | BUILD SUCCESS | BUILD SUCCESS (~31s) | PASS |
+| Negative minimumShouldMatch | 400, service skipped | 400 `minimumShouldMatch: minimumShouldMatch must be >= 0` | PASS |
+| Zero / null minimumShouldMatch | accepted | 0 → 200; null → 200 (existing tests) | PASS |
+| Blank/missing GET params | 400 before ES | empty/whitespace/missing all → 400 | PASS |
+| Valid search unchanged | 200 + same ids | term category=laptop → {p01,p02,p03,p04,p10} | PASS |
+
+## Actual test counts (this run)
+Surefire (unit) — total **28**, 0 failures:
+- `controller.JavaClientSearchControllerTest` — 8
+- `controller.SpringDataSearchControllerTest` — 12
+- `query.ProductQueriesTest` — 5
+- `service.JavaClientSearchServiceTest` — 3
+
+Failsafe (integration) — `integration.SearchQueriesIT` — **11**, 0 failures. Final line: `BUILD SUCCESS`.
+
+## Verified cURL (real app + real secured ES 9.4.8)
+| Request | Result |
+|---|---|
+| `term?field=&value=laptop` (spring-data) | 400 `Invalid request` |
+| `term field=" " value=Dell` (java-client, urlencoded space) | 400 `Invalid request` |
+| `term?field=brand` (missing value, java-client) | 400 `Invalid request` |
+| `match?field=name&text=` (spring-data) | 400 `Invalid request` |
+| bool `minimumShouldMatch:-1` | 400 `minimumShouldMatch: minimumShouldMatch must be >= 0` |
+| bool `minimumShouldMatch:0` (java-client) | 200 |
+| `term?field=category&value=laptop` (valid) | 200, ids `{p01,p02,p03,p04,p10}` (unchanged) |
+
+All error bodies are generic `ProblemDetail`s (no key, host, stack trace). No credential leakage observed.
+
+## Status
+PASS — findings #2 and #3 fixed; existing behavior preserved. Finding #1 (`total` vs returned hits), pagination, and `SearchResponse` were intentionally left unchanged (out of scope).

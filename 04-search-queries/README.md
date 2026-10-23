@@ -189,6 +189,21 @@ curl -s -XPOST "$base/api/spring-data/products/search/bool" -H 'Content-Type: ap
 ```
 response: `{ "client": "...", "total": N, "hits": [ { id, name, category, brand, description, price, quantity, score } ] }`
 
+### Input validation (ได้ HTTP 400)
+- GET term/match: parameter ที่จำเป็น (`field`, `value`, `text`) ต้องไม่ว่างและไม่เป็น whitespace ล้วน — ถ้าขาดหรือว่าง จะได้ **400** ก่อนเรียก Elasticsearch
+- POST bool: `minimumShouldMatch` เป็น optional แต่ถ้าใส่ต้องเป็นจำนวนเต็ม **ไม่ติดลบ** (`null`/0/บวก = ผ่าน, ติดลบ = **400**)
+  - หมายเหตุ: Elasticsearch รองรับ `minimum_should_match` syntax ที่ซับซ้อนกว่านี้ (เปอร์เซ็นต์, ค่าติดลบ) แต่บทนี้จงใจ expose เป็น non-negative integer แบบง่ายเท่านั้น
+```bash
+# field ว่าง -> 400
+curl -s -w ' STATUS=%{http_code}\n' "$base/api/spring-data/products/search/term?field=&value=laptop"
+# ขาด value -> 400
+curl -s -w ' STATUS=%{http_code}\n' "$base/api/java-client/products/search/term?field=brand"
+# minimumShouldMatch ติดลบ -> 400
+curl -s -w ' STATUS=%{http_code}\n' -XPOST "$base/api/spring-data/products/search/bool" -H 'Content-Type: application/json' \
+  -d '{"must":[{"type":"term","field":"category","value":"laptop"}],"minimumShouldMatch":-1}'
+# -> {"title":"Invalid request","status":400,...}
+```
+
 ## 14. Testing
 ```bash
 mvn clean verify
