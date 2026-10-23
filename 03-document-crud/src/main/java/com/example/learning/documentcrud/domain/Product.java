@@ -16,7 +16,7 @@ import java.math.BigDecimal;
  *
  * <p>Field mappings are chosen per data type:
  * <ul>
- *     <li>{@code name}: {@code text} for full-text plus a {@code keyword} sub-field for exact use</li>
+ *     <li>{@code name}: {@code text} for full-text search</li>
  *     <li>{@code description}: {@code text}</li>
  *     <li>{@code price}: {@code double}</li>
  *     <li>{@code quantity}: {@code integer}</li>

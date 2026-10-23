@@ -1,10 +1,11 @@
 # Chapter 03 Verification Report
 
 - **Timestamp (with timezone):** 2026-10-23 21:49:21 +07 (ICT, Asia/Bangkok)
-- **Source revision verified:**
+- **Source revision verified (historical):**
   - Branch: `main`
-  - Repository HEAD at verification: `d855622` (`docs(02-api-key-authentication): remove stale uncommitted-status note`)
-  - Chapter 03 (`03-document-crud/`) was **untracked/new** at verification time and was verified from the **uncommitted working tree**. The commit that eventually contains this report will be a later revision than `d855622`; this report documents the source state that was actually run, not that later commit.
+  - Repository HEAD at verification time: `d855622` (`docs(02-api-key-authentication): remove stale uncommitted-status note`)
+  - At that time Chapter 03 (`03-document-crud/`) was still **untracked/new** and was verified from the **working tree** (not yet committed). This section records the source state that was actually executed; the timestamp, commands, and results below all refer to that run.
+  - **Current state (informational):** Chapter 03 has since been committed in `ce3b4d8` (`feat(03-document-crud): add document CRUD chapter`). The verification evidence in this report was produced against the working-tree source described above, which matches what was committed in `ce3b4d8`; it was not re-run against that later commit.
 - **Versions:**
   - Java: OpenJDK Temurin **21.0.2** (arm64); Maven 3.9.9 (via `JAVA_HOME` → 21)
   - Spring Boot **4.1.2**; Spring Framework 7.0.10; Spring Data Elasticsearch **6.1.2**
