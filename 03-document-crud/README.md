@@ -172,24 +172,47 @@ docker compose -p ch03 down     # ลบ container + network (ไม่มี pe
 Java 21 · Spring Boot 4.1.2 · Spring Data Elasticsearch 6.1.2 · Elasticsearch Java client 9.4.8 · Elasticsearch server 9.4.8 · Testcontainers 2.0.5
 
 ## โครงสร้างโปรเจกต์
-```
+```text
 03-document-crud/
-├── docker-compose.yml        # ES 9.4.8, security on, http TLS off (local), bind 127.0.0.1
 ├── .env.example
+├── .gitignore
+├── docker-compose.yml
 ├── pom.xml
+├── README.md
+├── VERIFICATION.md
 └── src/
-    ├── main/java/com/example/learning/documentcrud/
-    │   ├── DocumentCrudApplication.java
-    │   ├── domain/Product.java                     # @Document(learning-products) + field mappings
-    │   ├── dto/{ProductRequest,ProductResponse}.java
-    │   ├── config/IndexInitializer.java            # สร้าง index+mapping ตอน startup (idempotent)
-    │   ├── controller/{SpringData,JavaClient}ProductController.java
-    │   ├── service/{SpringData,JavaClient}ProductService.java
-    │   └── exception/{GlobalExceptionHandler,ProductNotFoundException,DuplicateProductException}.java
-    ├── main/resources/application.yml
-    └── test/java/com/example/learning/documentcrud/
-        ├── controller/… , service/…  (unit)
-        └── integration/ProductCrudIT.java          # Testcontainers: security + API key + CRUD จริง
+    ├── main/
+    │   ├── java/com/example/learning/documentcrud/
+    │   │   ├── config/
+    │   │   │   └── IndexInitializer.java
+    │   │   ├── controller/
+    │   │   │   ├── JavaClientProductController.java
+    │   │   │   └── SpringDataProductController.java
+    │   │   ├── domain/
+    │   │   │   └── Product.java
+    │   │   ├── dto/
+    │   │   │   ├── ProductRequest.java
+    │   │   │   └── ProductResponse.java
+    │   │   ├── exception/
+    │   │   │   ├── DuplicateProductException.java
+    │   │   │   ├── GlobalExceptionHandler.java
+    │   │   │   └── ProductNotFoundException.java
+    │   │   ├── service/
+    │   │   │   ├── JavaClientProductService.java
+    │   │   │   └── SpringDataProductService.java
+    │   │   └── DocumentCrudApplication.java
+    │   └── resources/
+    │       └── application.yml
+    └── test/
+        └── java/com/example/learning/documentcrud/
+            ├── controller/
+            │   ├── JavaClientProductControllerTest.java
+            │   └── SpringDataProductControllerTest.java
+            ├── integration/
+            │   └── ProductCrudIT.java
+            └── service/
+                ├── JavaClientProductServiceTest.java
+                └── SpringDataProductServiceTest.java
 ```
 
 ## Testing

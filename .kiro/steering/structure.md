@@ -93,3 +93,26 @@ These standards apply to **all** chapters (current and future). They define the 
 - Every **completed** chapter contains its own `VERIFICATION.md` with real recorded evidence.
 - Apply the same naming and organization principles across all future chapters.
 - Do not modify previously completed chapters automatically; changes to an existing chapter require explicit user approval.
+
+## README Project Structure Standard
+Applies to the "โครงสร้างโปรเจกต์" (Project Structure) section of **every** chapter README (refines item 4 of the Chapter README template above).
+
+### Presentation
+- Every chapter README must contain a "โครงสร้างโปรเจกต์" section with an **expanded ASCII directory tree** in a fenced ```text block.
+- List **every actual source file and test file individually**. Include the relevant root-level files that exist in the chapter: `.env.example` (when present), `.gitignore`, `docker-compose.yml`, `pom.xml`, `README.md`, `VERIFICATION.md`, and `src/`.
+- Expand `src/` down through `main/` and `test/`, the full Java package path, and every package directory and file.
+- **Never** use compressed class notation such as `{ClassA,ClassB}.java`, and never use ellipsis placeholders such as `controller/…`, `service/…`, or `Test*.java`.
+- Do not invent files or directories that do not exist; do not omit files that do exist.
+- Ordering within each directory: **directories grouped before files**, each group in alphabetical order (the `@SpringBootApplication` class therefore appears after its sibling sub-packages).
+- Use consistent indentation and tree connectors (`├──`, `└──`, `│`).
+- Avoid lengthy inline descriptions inside the tree; keep per-line comments out of the tree and put responsibilities in prose elsewhere in the README if needed.
+
+### Accuracy and maintenance
+- The tree must match the real repository filesystem (excluding build output such as `target/`).
+- After adding, removing, moving, or renaming any source/test/config file, regenerate or re-verify the affected chapter's tree before considering the chapter done.
+- Verify the tree against the actual files (e.g. `git ls-files` within the chapter, excluding `target/`).
+
+### Consistency across chapters
+- Apply the same tree presentation style to all current and future chapters.
+- Respect each chapter's own independent Spring Boot layout; reflect the implementation as it actually is.
+- Documentation describes the implementation — it must **not** dictate new packages, classes, or architectural layers, and source code must not be changed merely to match a documentation example.

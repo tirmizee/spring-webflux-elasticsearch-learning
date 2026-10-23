@@ -161,22 +161,44 @@ docker compose -p ch02 down     # ลบ container + network (ไม่มี pe
 Java 21 · Spring Boot 4.1.2 · Spring Data Elasticsearch 6.1.2 · Elasticsearch Java client 9.4.8 · Elasticsearch server 9.4.8 · Testcontainers 2.0.5
 
 ## โครงสร้างโปรเจกต์
-```
+```text
 02-api-key-authentication/
-├── docker-compose.yml        # ES 9.4.8, security=on, http TLS=off (local), bind 127.0.0.1
-├── .env.example              # ตัวอย่าง env (ELASTIC_PASSWORD, ELASTICSEARCH_API_KEY)
+├── .env.example
+├── .gitignore
+├── docker-compose.yml
 ├── pom.xml
+├── README.md
+├── VERIFICATION.md
 └── src/
-    ├── main/java/com/example/learning/apikeyauth/
-    │   ├── ApiKeyAuthenticationApplication.java
-    │   ├── controller/{SpringDataConnectionController,JavaClientConnectionController}.java
-    │   ├── service/{SpringDataConnectionService,JavaClientConnectionService}.java
-    │   ├── dto/{ClusterHealthResponse,ClusterInfoResponse}.java
-    │   └── exception/GlobalExceptionHandler.java   # แยก 401/403/502/503/504/500 + no-leak
-    ├── main/resources/application.yml              # spring.elasticsearch.api-key = ${ELASTICSEARCH_API_KEY}
-    └── test/java/com/example/learning/apikeyauth/
-        ├── controller/… , service/… , exception/…  (unit)
-        └── integration/ApiKeyAuthenticationIT.java (Testcontainers: security + สร้าง API key จริง)
+    ├── main/
+    │   ├── java/com/example/learning/apikeyauth/
+    │   │   ├── controller/
+    │   │   │   ├── JavaClientConnectionController.java
+    │   │   │   └── SpringDataConnectionController.java
+    │   │   ├── dto/
+    │   │   │   ├── ClusterHealthResponse.java
+    │   │   │   └── ClusterInfoResponse.java
+    │   │   ├── exception/
+    │   │   │   └── GlobalExceptionHandler.java
+    │   │   ├── service/
+    │   │   │   ├── JavaClientConnectionService.java
+    │   │   │   └── SpringDataConnectionService.java
+    │   │   └── ApiKeyAuthenticationApplication.java
+    │   └── resources/
+    │       └── application.yml
+    └── test/
+        └── java/com/example/learning/apikeyauth/
+            ├── controller/
+            │   ├── JavaClientConnectionControllerTest.java
+            │   └── SpringDataConnectionControllerTest.java
+            ├── exception/
+            │   ├── ErrorThrowingTestController.java
+            │   └── GlobalExceptionHandlerTest.java
+            ├── integration/
+            │   └── ApiKeyAuthenticationIT.java
+            └── service/
+                ├── JavaClientConnectionServiceTest.java
+                └── SpringDataConnectionServiceTest.java
 ```
 
 ## Testing
