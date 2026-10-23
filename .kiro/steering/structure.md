@@ -116,3 +116,17 @@ Applies to the "โครงสร้างโปรเจกต์" (Project St
 - Apply the same tree presentation style to all current and future chapters.
 - Respect each chapter's own independent Spring Boot layout; reflect the implementation as it actually is.
 - Documentation describes the implementation — it must **not** dictate new packages, classes, or architectural layers, and source code must not be changed merely to match a documentation example.
+
+## Root README Presentation Standards
+Applies to the repository **root** `README.md` (chapter READMEs follow the Chapter README template and the README Project Structure Standard above).
+- Use a clear project title and a concise Thai introduction (keep technical terms, identifiers, and code in English).
+- Prefer clean technical documentation over decorative design; no banners or animated images.
+- Use icons sparingly and consistently — mainly for section navigation and Roadmap statuses.
+- Use technology badges only when useful and **factually correct** (verified versions only); keep the set small.
+- Roadmap status indicators are fixed and consistent: `✅ Verified`, `🛠️ Implemented`, `⏳ Planned`.
+- Keep all chapter links and statuses **synchronized with the repository** (link only to folders that exist; a chapter is `✅ Verified` only when its `VERIFICATION.md` records real passing evidence).
+- Use concise, consistent topic descriptions in a readable Markdown table; avoid overly wide tables (readable on desktop and mobile GitHub).
+- Do not duplicate chapter descriptions across the Roadmap and Getting Started; the Roadmap is the single source for status.
+- Keep Getting Started practical and beginner-friendly; link to chapter READMEs for full setup rather than duplicating each chapter's instructions.
+- Preserve the Thai narrative with English technical terminology; keep whitespace and Markdown formatting consistent; ensure all relative links work.
+- Do not change chapter README formatting standards as part of root README edits.
