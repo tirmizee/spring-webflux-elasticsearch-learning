@@ -1,4 +1,4 @@
-package com.example.learning.basicconnection.springdata;
+package com.example.learning.basicconnection.service;
 
 import co.elastic.clients.elasticsearch.cluster.HealthResponse;
 import co.elastic.clients.elasticsearch.core.InfoResponse;
@@ -16,18 +16,18 @@ import reactor.core.publisher.Mono;
  * {@link Mono}/{@link reactor.core.publisher.Flux}, so the calls are genuinely non-blocking:
  * the HTTP I/O happens on the reactor-netty event loop and we never block a request thread.
  *
- * <p>This is the key difference from the Java API Client approach (see the {@code javaclient}
- * package), where the client is synchronous and we must offload the blocking work to a
- * bounded-elastic scheduler.
+ * <p>This is the key difference from the Java API Client approach
+ * ({@link JavaClientConnectionService}), where the client is synchronous and we must offload the
+ * blocking work to a bounded-elastic scheduler.
  */
 @Service
-public class SpringDataElasticsearchService {
+public class SpringDataConnectionService {
 
     private static final String CLIENT = "spring-data";
 
     private final ReactiveElasticsearchClient reactiveClient;
 
-    public SpringDataElasticsearchService(ReactiveElasticsearchClient reactiveClient) {
+    public SpringDataConnectionService(ReactiveElasticsearchClient reactiveClient) {
         this.reactiveClient = reactiveClient;
     }
 

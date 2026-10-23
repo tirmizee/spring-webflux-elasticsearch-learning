@@ -1,7 +1,8 @@
-package com.example.learning.basicconnection.javaclient;
+package com.example.learning.basicconnection.controller;
 
 import com.example.learning.basicconnection.dto.ClusterHealthResponse;
 import com.example.learning.basicconnection.dto.ClusterInfoResponse;
+import com.example.learning.basicconnection.service.JavaClientConnectionService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -10,6 +11,10 @@ import reactor.core.publisher.Mono;
 /**
  * REST endpoints for the official Elasticsearch Java API Client approach.
  *
+ * <p>The controller is intentionally thin: it only maps HTTP routes to service calls. The
+ * service is responsible for offloading the synchronous client's blocking work to a
+ * bounded-elastic scheduler.
+ *
  * <ul>
  *     <li>{@code GET /api/java-client/elasticsearch/health}</li>
  *     <li>{@code GET /api/java-client/elasticsearch/cluster-info}</li>
@@ -17,11 +22,11 @@ import reactor.core.publisher.Mono;
  */
 @RestController
 @RequestMapping("/api/java-client/elasticsearch")
-public class JavaClientElasticsearchController {
+public class JavaClientConnectionController {
 
-    private final JavaClientElasticsearchService service;
+    private final JavaClientConnectionService service;
 
-    public JavaClientElasticsearchController(JavaClientElasticsearchService service) {
+    public JavaClientConnectionController(JavaClientConnectionService service) {
         this.service = service;
     }
 

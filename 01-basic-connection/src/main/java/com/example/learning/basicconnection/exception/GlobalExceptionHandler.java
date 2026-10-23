@@ -1,4 +1,4 @@
-package com.example.learning.basicconnection.web;
+package com.example.learning.basicconnection.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -6,13 +6,14 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
- * Maps unexpected errors (e.g. Elasticsearch unreachable) to a 503 response.
+ * Centralized exception handling for the whole application.
  *
- * <p>The message is intentionally generic and never includes connection details or
- * credentials, so error responses cannot leak sensitive configuration.
+ * <p>Maps unexpected errors (e.g. Elasticsearch unreachable) to a 503 response. The message is
+ * intentionally generic and never includes connection details or credentials, so error responses
+ * cannot leak sensitive configuration.
  */
 @RestControllerAdvice
-public class GlobalErrorHandler {
+public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleUnexpected(Exception ex) {

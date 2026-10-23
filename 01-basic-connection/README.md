@@ -40,6 +40,8 @@ WebFlux ทำงานบน event loop ของ reactor-netty ซึ่งม
 บทนี้ยังไม่แตะ search query — เราเรียกแค่ `cluster health` และ `info` (เทียบเท่า `GET /`) เพื่อพิสูจน์การเชื่อมต่อ
 
 ## 4. Project Structure
+โครงสร้างแบบ **layered** (แยกตาม responsibility) ตามมาตรฐานใน `.kiro/steering/structure.md`
+
 ```
 01-basic-connection/
 ├── docker-compose.yml            # Elasticsearch 9.4.8 single-node, security ปิด, bind 127.0.0.1
@@ -48,38 +50,53 @@ WebFlux ทำงานบน event loop ของ reactor-netty ซึ่งม
 ├── VERIFICATION.md               # รายงานผลการ verify จริง
 └── src/
     ├── main/java/com/example/learning/basicconnection/
-    │   ├── BasicConnectionApplication.java          # main entry point
-    │   ├── dto/
-    │   │   ├── ClusterHealthResponse.java           # DTO ที่เสถียร (ไม่ expose payload ดิบ)
+    │   ├── BasicConnectionApplication.java          # main entry point (อยู่ root package)
+    │   ├── controller/                              # HTTP layer (thin)
+    │   │   ├── SpringDataConnectionController.java   # endpoint ของวิธีที่ 1 (reactive)
+    │   │   └── JavaClientConnectionController.java   # endpoint ของวิธีที่ 2 (blocking)
+    │   ├── service/                                 # application logic + ES integration
+    │   │   ├── SpringDataConnectionService.java      # ใช้ ReactiveElasticsearchClient (non-blocking)
+    │   │   └── JavaClientConnectionService.java       # ใช้ ElasticsearchClient (blocking + boundedElastic)
+    │   ├── dto/                                      # API response contracts (record)
+    │   │   ├── ClusterHealthResponse.java            # DTO ที่เสถียร (ไม่ expose payload ดิบ)
     │   │   └── ClusterInfoResponse.java
-    │   ├── springdata/                              # วิธีที่ 1: Spring Data (reactive)
-    │   │   ├── SpringDataElasticsearchService.java
-    │   │   └── SpringDataElasticsearchController.java
-    │   ├── javaclient/                              # วิธีที่ 2: official Java API Client (blocking)
-    │   │   ├── JavaClientElasticsearchService.java
-    │   │   └── JavaClientElasticsearchController.java
-    │   └── web/
-    │       └── GlobalErrorHandler.java              # map error → 503 โดยไม่ leak ข้อมูล
+    │   └── exception/
+    │       └── GlobalExceptionHandler.java           # map error → 503 โดยไม่ leak ข้อมูล
     ├── main/resources/application.yml
     └── test/java/com/example/learning/basicconnection/
-        ├── springdata/SpringDataElasticsearchControllerTest.java   # @WebFluxTest (mock service)
-        ├── javaclient/JavaClientElasticsearchControllerTest.java   # @WebFluxTest (mock service)
-        └── ElasticsearchConnectionIT.java                          # integration test (Testcontainers, ES จริง)
+        ├── controller/
+        │   ├── SpringDataConnectionControllerTest.java   # @WebFluxTest (mock service)
+        │   └── JavaClientConnectionControllerTest.java   # @WebFluxTest (mock service)
+        ├── service/
+        │   ├── SpringDataConnectionServiceTest.java      # mock client + StepVerifier
+        │   └── JavaClientConnectionServiceTest.java      # mock client + StepVerifier
+        └── integration/
+            └── ElasticsearchConnectionIT.java            # integration test (Testcontainers, ES จริง)
 ```
+
+**ความรับผิดชอบของแต่ละ package:**
+- `controller/` — รับ HTTP request/response เท่านั้น (thin controller) ส่งต่อให้ service และคืนค่า `Mono`
+- `service/` — logic และการเชื่อมต่อ Elasticsearch แยกชัดเจนระหว่างสอง client (ชื่อ class บ่งบอกวิธีการ)
+- `dto/` — สัญญา (contract) ของ response เป็น `record` ล้วน ไม่มี business logic
+- `exception/` — จัดการ error รวมศูนย์ด้วย `@RestControllerAdvice`
+- application class อยู่ที่ **root package** เพื่อให้ component scan ครอบคลุมทุก package
 
 ## 5. How It Works
 ```mermaid
 flowchart LR
-    client([HTTP client / cURL]) -->|GET /api/spring-data/...| sdc[SpringDataController]
-    client -->|GET /api/java-client/...| jcc[JavaClientController]
+    client([HTTP client / cURL]) -->|GET /api/spring-data/...| sdc[SpringDataConnectionController]
+    client -->|GET /api/java-client/...| jcc[JavaClientConnectionController]
 
-    sdc --> sds[SpringDataService]
+    sdc --> sds[SpringDataConnectionService]
     sds -->|reactive, non-blocking| rc[ReactiveElasticsearchClient]
     rc -->|HTTP| es[(Elasticsearch 9.4.8)]
 
-    jcc --> jcs[JavaClientService]
+    jcc --> jcs[JavaClientConnectionService]
     jcs -->|Mono.fromCallable + boundedElastic| ec[ElasticsearchClient blocking]
     ec -->|HTTP| es
+
+    sdc -. error .-> geh[GlobalExceptionHandler → 503]
+    jcc -. error .-> geh
 ```
 
 ทั้งสอง client ถูก auto-configure โดย Spring Boot จาก property `spring.elasticsearch.uris` ตัวเดียว
@@ -195,11 +212,15 @@ curl -s -w '\nSTATUS=%{http_code}\n' http://127.0.0.1:8080/api/java-client/elast
 ```bash
 mvn clean verify
 ```
-- **Unit / controller tests** (`*Test`, รันด้วย surefire): ทดสอบ routing, status code, การ serialize JSON โดย mock service ไว้ (`@WebFluxTest`)
-- **Integration test** (`ElasticsearchConnectionIT`, รันด้วย failsafe ใน phase `verify`): สตาร์ต Elasticsearch 9.4.8 จริงด้วย Testcontainers แล้วเรียกทั้งสอง service เพื่อยืนยันว่าเชื่อมต่อ cluster จริง
+โครงสร้าง test สะท้อน production package (`controller/`, `service/`, `integration/`)
+
+- **Controller tests** (`controller/*Test`, surefire, `@WebFluxTest`): ทดสอบ routing, status code, การ serialize JSON โดย mock service ไว้ รวมถึงเคส error → 503
+- **Service tests** (`service/*Test`, surefire): mock Elasticsearch client แล้วใช้ `StepVerifier` ยืนยันว่า
+  - map response เป็น DTO ถูกต้อง, stream มีค่าเดียวแล้ว complete, และ error ถูก propagate ออกมา (ไม่ถูกกลืน)
+- **Integration test** (`integration/ElasticsearchConnectionIT`, failsafe ใน phase `verify`): สตาร์ต Elasticsearch 9.4.8 จริงด้วย Testcontainers แล้วเรียกทั้งสอง service เพื่อยืนยันว่าเชื่อมต่อ cluster จริง
   - ต้องมี Docker daemon ทำงานอยู่ มิฉะนั้น integration test จะรันไม่ได้
 
-ขอบเขตการ verify: unit test ไม่แตะ Elasticsearch, ส่วน integration test และ cURL ยืนยันการเชื่อมต่อจริงกับ ES 9.4.8
+ขอบเขตการ verify: unit test (controller + service) ไม่แตะ Elasticsearch จริง, ส่วน integration test และ cURL ยืนยันการเชื่อมต่อจริงกับ ES 9.4.8
 
 ## 10. Key Takeaways
 - Spring Boot auto-configure ทั้ง reactive client และ synchronous Java API Client จาก property เดียว

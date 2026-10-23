@@ -1,8 +1,9 @@
-package com.example.learning.basicconnection.springdata;
+package com.example.learning.basicconnection.controller;
 
 import com.example.learning.basicconnection.dto.ClusterHealthResponse;
 import com.example.learning.basicconnection.dto.ClusterInfoResponse;
-import com.example.learning.basicconnection.web.GlobalErrorHandler;
+import com.example.learning.basicconnection.exception.GlobalExceptionHandler;
+import com.example.learning.basicconnection.service.SpringDataConnectionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webflux.test.autoconfigure.WebFluxTest;
@@ -17,15 +18,15 @@ import static org.mockito.Mockito.when;
  * Controller slice test for the Spring Data approach. The service is mocked, so this
  * verifies routing, status codes and JSON serialization without touching Elasticsearch.
  */
-@WebFluxTest(controllers = SpringDataElasticsearchController.class)
-@Import(GlobalErrorHandler.class)
-class SpringDataElasticsearchControllerTest {
+@WebFluxTest(controllers = SpringDataConnectionController.class)
+@Import(GlobalExceptionHandler.class)
+class SpringDataConnectionControllerTest {
 
     @Autowired
     private WebTestClient webTestClient;
 
     @MockitoBean
-    private SpringDataElasticsearchService service;
+    private SpringDataConnectionService service;
 
     @Test
     void healthReturnsMappedBody() {

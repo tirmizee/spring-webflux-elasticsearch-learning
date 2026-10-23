@@ -1,8 +1,9 @@
-package com.example.learning.basicconnection.javaclient;
+package com.example.learning.basicconnection.controller;
 
 import com.example.learning.basicconnection.dto.ClusterHealthResponse;
 import com.example.learning.basicconnection.dto.ClusterInfoResponse;
-import com.example.learning.basicconnection.web.GlobalErrorHandler;
+import com.example.learning.basicconnection.exception.GlobalExceptionHandler;
+import com.example.learning.basicconnection.service.JavaClientConnectionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webflux.test.autoconfigure.WebFluxTest;
@@ -16,15 +17,15 @@ import static org.mockito.Mockito.when;
 /**
  * Controller slice test for the Java API Client approach. The service is mocked.
  */
-@WebFluxTest(controllers = JavaClientElasticsearchController.class)
-@Import(GlobalErrorHandler.class)
-class JavaClientElasticsearchControllerTest {
+@WebFluxTest(controllers = JavaClientConnectionController.class)
+@Import(GlobalExceptionHandler.class)
+class JavaClientConnectionControllerTest {
 
     @Autowired
     private WebTestClient webTestClient;
 
     @MockitoBean
-    private JavaClientElasticsearchService service;
+    private JavaClientConnectionService service;
 
     @Test
     void healthReturnsMappedBody() {

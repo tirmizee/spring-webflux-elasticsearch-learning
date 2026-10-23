@@ -1,9 +1,9 @@
-package com.example.learning.basicconnection;
+package com.example.learning.basicconnection.integration;
 
 import com.example.learning.basicconnection.dto.ClusterHealthResponse;
 import com.example.learning.basicconnection.dto.ClusterInfoResponse;
-import com.example.learning.basicconnection.javaclient.JavaClientElasticsearchService;
-import com.example.learning.basicconnection.springdata.SpringDataElasticsearchService;
+import com.example.learning.basicconnection.service.JavaClientConnectionService;
+import com.example.learning.basicconnection.service.SpringDataConnectionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -47,10 +47,10 @@ class ElasticsearchConnectionIT {
     }
 
     @Autowired
-    private SpringDataElasticsearchService springDataService;
+    private SpringDataConnectionService springDataService;
 
     @Autowired
-    private JavaClientElasticsearchService javaClientService;
+    private JavaClientConnectionService javaClientService;
 
     private static final Predicate<String> NON_BLANK = s -> s != null && !s.isBlank();
 

@@ -1,7 +1,8 @@
-package com.example.learning.basicconnection.springdata;
+package com.example.learning.basicconnection.controller;
 
 import com.example.learning.basicconnection.dto.ClusterHealthResponse;
 import com.example.learning.basicconnection.dto.ClusterInfoResponse;
+import com.example.learning.basicconnection.service.SpringDataConnectionService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -10,6 +11,9 @@ import reactor.core.publisher.Mono;
 /**
  * REST endpoints for the Spring Data Elasticsearch (reactive) approach.
  *
+ * <p>The controller is intentionally thin: it only maps HTTP routes to service calls and lets
+ * the reactive type flow back to WebFlux. All integration logic lives in the service.
+ *
  * <ul>
  *     <li>{@code GET /api/spring-data/elasticsearch/health}</li>
  *     <li>{@code GET /api/spring-data/elasticsearch/cluster-info}</li>
@@ -17,11 +21,11 @@ import reactor.core.publisher.Mono;
  */
 @RestController
 @RequestMapping("/api/spring-data/elasticsearch")
-public class SpringDataElasticsearchController {
+public class SpringDataConnectionController {
 
-    private final SpringDataElasticsearchService service;
+    private final SpringDataConnectionService service;
 
-    public SpringDataElasticsearchController(SpringDataElasticsearchService service) {
+    public SpringDataConnectionController(SpringDataConnectionService service) {
         this.service = service;
     }
 

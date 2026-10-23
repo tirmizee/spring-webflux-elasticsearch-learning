@@ -1,4 +1,4 @@
-package com.example.learning.basicconnection.javaclient;
+package com.example.learning.basicconnection.service;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.cluster.HealthResponse;
@@ -27,15 +27,17 @@ import java.io.IOException;
  * <p>Note that wrapping the <em>result</em> in {@code Mono.just(client.call())} would NOT help —
  * that still executes the blocking call on the subscribing thread before the Mono is created.
  * The blocking work must live inside the {@code fromCallable} lambda so the scheduler can run it.
+ * The returned {@code Mono} is therefore non-blocking <em>to its subscriber</em>, but the underlying
+ * client call itself is still blocking work that we have deliberately isolated.
  */
 @Service
-public class JavaClientElasticsearchService {
+public class JavaClientConnectionService {
 
     private static final String CLIENT = "java-client";
 
     private final ElasticsearchClient elasticsearchClient;
 
-    public JavaClientElasticsearchService(ElasticsearchClient elasticsearchClient) {
+    public JavaClientConnectionService(ElasticsearchClient elasticsearchClient) {
         this.elasticsearchClient = elasticsearchClient;
     }
 
