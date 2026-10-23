@@ -130,3 +130,14 @@ Applies to the repository **root** `README.md` (chapter READMEs follow the Chapt
 - Keep Getting Started practical and beginner-friendly; link to chapter READMEs for full setup rather than duplicating each chapter's instructions.
 - Preserve the Thai narrative with English technical terminology; keep whitespace and Markdown formatting consistent; ensure all relative links work.
 - Do not change chapter README formatting standards as part of root README edits.
+
+## Chapter README Presentation Standards
+Applies to each chapter's `README.md` (complements the Chapter README template and the README Project Structure Standard above; does not replace them). General Java coding standards stay in `code-standards.md`.
+- Use a clear learning-oriented structure and a concise introduction stating what the reader learns, which clients/features are used, and what they can run after finishing.
+- Add a compact **Table of Contents** (valid GitHub Markdown anchors) for longer chapters so sections are easy to navigate.
+- Keep project trees readable and **accurate to the real filesystem** (every source/test file listed; no compressed notation or ellipses; no noisy inline comments — put responsibilities in a short section below the tree).
+- Provide a practical, **step-by-step Quick Start** in small fenced Bash blocks (enter dir → start ES → verify readiness → test → run → call API → clean up). Never imply `mvn clean verify` passes without Docker when integration tests need Testcontainers.
+- Group **API examples by client**, each with HTTP method + endpoint, copy-paste cURL, a concise expected response, and a short explanation; clearly mark dynamic fields (e.g. cluster UUID) as variable.
+- Use section icons **sparingly** and consistently for navigation; keep Markdown GitHub-compatible and readable on mobile; no banners/screenshots/GIFs/badges inside chapter READMEs.
+- Avoid duplicate explanations across sections; preserve technical accuracy and keep documented commands/responses synchronized with real verification evidence.
+- Preserve the Thai narrative with English technical terminology.
