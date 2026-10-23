@@ -5,13 +5,11 @@
 > and corrects stale Git metadata in a previous version of this report.
 
 - **Timestamp (with timezone):** 2026-10-23 16:48:28 +07 (ICT, Asia/Bangkok)
-- **Git metadata (at this verification):**
+- **Source revision used for verification:**
   - Branch: `main`
-  - HEAD commit: `d2dcf00` (`d2dcf0093cf1a5cc3d0272ae90051af6d7b3676a`) — "fix(01-basic-connection): classify ES timeouts as 504 gateway timeout"
-  - Working tree status before this report was written: **clean** (`git status --short` empty). The source code, tests, and README described here are all **committed** at `d2dcf00`.
-  - After this report is written, the only expected uncommitted change is `01-basic-connection/VERIFICATION.md` itself (this file).
-  - Note: a previous version of this report stated HEAD `cc8b2ce` and described the 504 changes as "uncommitted". That was accurate when first written but became **stale** after those changes were committed (first as `cc8b2ce`→ then the 504 work as `d2dcf00`). This version corrects that.
-  - These commits exist in the local repository and on `origin/main` (HEAD shows `origin/main`). This report file is not itself committed/pushed yet.
+  - Verified commit: `d2dcf00` (`d2dcf0093cf1a5cc3d0272ae90051af6d7b3676a`) — "fix(01-basic-connection): classify ES timeouts as 504 gateway timeout"
+  - Working tree status at verification time: **clean** (`git status --short` empty). The source code, tests, and README described here were all **committed** at `d2dcf00`.
+  - `d2dcf00` is the original revision used during this verification run and is preserved here as historical evidence; it is not updated to later HEAD values.
 - **Versions:**
   - Java: OpenJDK Temurin **21.0.2** (LTS, arm64)
   - Maven: Apache **3.9.9** (invoked with `JAVA_HOME` → Temurin 21.0.2)
@@ -92,7 +90,6 @@ Endpoint paths, successful response DTO fields, controller/service separation, D
 ## Remaining issues
 - None in source, tests, or README (verified consistent with committed `d2dcf00`).
 - The 504 timeout path is verified via unit tests only (real end-to-end timeout is non-deterministic).
-- After this report is saved, `VERIFICATION.md` will be the only uncommitted change; commit it to bring the report in sync with the repository.
 - Environment note: machine default `java`/`mvn` are Java 17; JDK 21 used explicitly via `JAVA_HOME`.
 - Cleanup: app stopped; `docker compose -p ch01 down` removed container + network (no persistent volume).
 
