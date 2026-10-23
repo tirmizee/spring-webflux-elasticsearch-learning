@@ -12,6 +12,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
+import java.net.ConnectException;
+
 import static org.mockito.Mockito.when;
 
 /**
@@ -60,11 +62,14 @@ class SpringDataConnectionControllerTest {
     }
 
     @Test
-    void whenServiceFailsThenServiceUnavailable() {
-        when(service.clusterHealth()).thenReturn(Mono.error(new RuntimeException("connection refused")));
+    void whenElasticsearchUnreachableThenServiceUnavailable() {
+        // A connectivity failure (ES down) must be classified as 503 by GlobalExceptionHandler.
+        when(service.clusterHealth()).thenReturn(Mono.error(new ConnectException("connection refused")));
 
         webTestClient.get().uri("/api/spring-data/elasticsearch/health")
                 .exchange()
-                .expectStatus().isEqualTo(503);
+                .expectStatus().isEqualTo(503)
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Elasticsearch unavailable");
     }
 }

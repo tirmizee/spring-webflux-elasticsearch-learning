@@ -61,7 +61,7 @@ WebFlux ทำงานบน event loop ของ reactor-netty ซึ่งม
     │   │   ├── ClusterHealthResponse.java            # DTO ที่เสถียร (ไม่ expose payload ดิบ)
     │   │   └── ClusterInfoResponse.java
     │   └── exception/
-    │       └── GlobalExceptionHandler.java           # map error → 503 โดยไม่ leak ข้อมูล
+    │       └── GlobalExceptionHandler.java           # จำแนก error → 503/502/500 โดยไม่ leak ข้อมูล
     ├── main/resources/application.yml
     └── test/java/com/example/learning/basicconnection/
         ├── controller/
@@ -69,7 +69,10 @@ WebFlux ทำงานบน event loop ของ reactor-netty ซึ่งม
         │   └── JavaClientConnectionControllerTest.java   # @WebFluxTest (mock service)
         ├── service/
         │   ├── SpringDataConnectionServiceTest.java      # mock client + StepVerifier
-        │   └── JavaClientConnectionServiceTest.java      # mock client + StepVerifier
+        │   └── JavaClientConnectionServiceTest.java      # mock client + StepVerifier + execution isolation
+        ├── exception/
+        │   ├── GlobalExceptionHandlerTest.java           # จำแนก error 503/502/500 + no-leak (@WebFluxTest)
+        │   └── ErrorThrowingTestController.java          # test-only controller ไว้โยน exception
         └── integration/
             └── ElasticsearchConnectionIT.java            # integration test (Testcontainers, ES จริง)
 ```
@@ -95,8 +98,11 @@ flowchart LR
     jcs -->|Mono.fromCallable + boundedElastic| ec[ElasticsearchClient blocking]
     ec -->|HTTP| es
 
-    sdc -. error .-> geh[GlobalExceptionHandler → 503]
+    sdc -. error .-> geh[GlobalExceptionHandler]
     jcc -. error .-> geh
+    geh -->|unreachable| s503[503 unavailable]
+    geh -->|ES error response| s502[502 bad gateway]
+    geh -->|unexpected| s500[500 internal error]
 ```
 
 ทั้งสอง client ถูก auto-configure โดย Spring Boot จาก property `spring.elasticsearch.uris` ตัวเดียว
@@ -194,11 +200,20 @@ curl -s http://127.0.0.1:8080/api/spring-data/elasticsearch/cluster-info \
   | jq -e '.versionNumber=="9.4.8" and (.clusterUuid|length>0)'
 ```
 
-Failure path (ES ดับ) → ได้ HTTP **503** พร้อมข้อความ generic:
+### Error handling (การจำแนก error)
+`GlobalExceptionHandler` จำแนก error ตามสาเหตุจริง ไม่ได้ตอบ 503 กับทุกกรณี และ body เป็น generic เสมอ (ไม่ leak host/uri/credential/stack trace)
+
+| สาเหตุ | Exception | HTTP status | title |
+|---|---|---|---|
+| ติดต่อ Elasticsearch ไม่ได้ (node ดับ, connection refused, unknown host, I/O) | `ConnectException` / `UnknownHostException` / `IOException` (รวม `TransportException`) | **503** Service Unavailable | `Elasticsearch unavailable` |
+| ติดต่อได้ แต่ ES ตอบ error response | `ElasticsearchException` | **502** Bad Gateway | `Elasticsearch returned an error` |
+| error อื่นที่ไม่คาดคิดในแอป | อื่น ๆ | **500** Internal Server Error | `Internal server error` |
+
+Failure path (ES ดับ) → ได้ HTTP **503**:
 ```bash
 docker compose -p ch01 stop elasticsearch
 curl -s -w '\nSTATUS=%{http_code}\n' http://127.0.0.1:8080/api/java-client/elasticsearch/health
-# → {"title":"Elasticsearch request failed", "status":503, ...}  STATUS=503
+# → {"title":"Elasticsearch unavailable","status":503,"detail":"Could not reach Elasticsearch. ...","instance":"/api/java-client/elasticsearch/health"}  STATUS=503
 ```
 
 > ค่าที่เป็น dynamic:
@@ -212,21 +227,24 @@ curl -s -w '\nSTATUS=%{http_code}\n' http://127.0.0.1:8080/api/java-client/elast
 ```bash
 mvn clean verify
 ```
-โครงสร้าง test สะท้อน production package (`controller/`, `service/`, `integration/`)
+โครงสร้าง test สะท้อน production package (`controller/`, `service/`, `exception/`, `integration/`)
 
-- **Controller tests** (`controller/*Test`, surefire, `@WebFluxTest`): ทดสอบ routing, status code, การ serialize JSON โดย mock service ไว้ รวมถึงเคส error → 503
+- **Controller tests** (`controller/*Test`, surefire, `@WebFluxTest`): ทดสอบ routing, status code, การ serialize JSON โดย mock service ไว้ รวมถึงเคส ES ติดต่อไม่ได้ → 503
 - **Service tests** (`service/*Test`, surefire): mock Elasticsearch client แล้วใช้ `StepVerifier` ยืนยันว่า
   - map response เป็น DTO ถูกต้อง, stream มีค่าเดียวแล้ว complete, และ error ถูก propagate ออกมา (ไม่ถูกกลืน)
+  - สำหรับ Java API Client (blocking): ยืนยันว่า blocking call ถูก **isolate ไปรันบน `boundedElastic` worker** (ไม่ใช่ caller/event-loop thread) และ `Mono.fromCallable` เป็น lazy (ไม่เรียก client ก่อน subscribe)
+- **Exception tests** (`exception/GlobalExceptionHandlerTest`, surefire, `@WebFluxTest`): ยืนยันการจำแนก error (503/502/500) และ body ไม่ leak host/uri/stack trace
 - **Integration test** (`integration/ElasticsearchConnectionIT`, failsafe ใน phase `verify`): สตาร์ต Elasticsearch 9.4.8 จริงด้วย Testcontainers แล้วเรียกทั้งสอง service เพื่อยืนยันว่าเชื่อมต่อ cluster จริง
   - ต้องมี Docker daemon ทำงานอยู่ มิฉะนั้น integration test จะรันไม่ได้
 
-ขอบเขตการ verify: unit test (controller + service) ไม่แตะ Elasticsearch จริง, ส่วน integration test และ cURL ยืนยันการเชื่อมต่อจริงกับ ES 9.4.8
+ขอบเขตการ verify: unit test (controller + service + exception) ไม่แตะ Elasticsearch จริง, ส่วน integration test และ cURL ยืนยันการเชื่อมต่อจริงกับ ES 9.4.8
 
 ## 10. Key Takeaways
 - Spring Boot auto-configure ทั้ง reactive client และ synchronous Java API Client จาก property เดียว
 - Reactive client เรียกได้ตรง ๆ แต่ synchronous client ต้องย้ายไป `boundedElastic()` เสมอในแอป WebFlux
 - ควร expose DTO เสถียรแทน payload ดิบของ vendor เพื่อให้ API contract ไม่เปลี่ยนตาม internal ของ ES
 - เวอร์ชัน client กับ server ควรตรงกัน (ที่นี่คือ 9.4.8 ทั้งคู่)
+- จำแนก error ตามสาเหตุ (unreachable → 503, ES error response → 502, อื่น ๆ → 500) ดีกว่าตอบ status เดียวกับทุกกรณี และต้องไม่ leak รายละเอียด infrastructure
 
 ## 11. Common Pitfalls
 - **Block event loop**: เรียก `ElasticsearchClient` (sync) ตรง ๆ บน thread ของ WebFlux → ใช้ `Mono.fromCallable(...).subscribeOn(Schedulers.boundedElastic())`

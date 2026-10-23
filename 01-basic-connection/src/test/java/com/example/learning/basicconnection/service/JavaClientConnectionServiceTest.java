@@ -12,8 +12,12 @@ import org.junit.jupiter.api.Test;
 import reactor.test.StepVerifier;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -79,5 +83,66 @@ class JavaClientConnectionServiceTest {
         StepVerifier.create(service.clusterHealth())
                 .expectError(IOException.class)
                 .verify();
+    }
+
+    @Test
+    void blockingCallRunsOnBoundedElasticNotCallerThread() throws IOException {
+        ElasticsearchClient client = mock(ElasticsearchClient.class);
+        InfoResponse info = mock(InfoResponse.class);
+        ElasticsearchVersionInfo version = mock(ElasticsearchVersionInfo.class);
+        when(version.number()).thenReturn("9.4.8");
+        when(info.clusterName()).thenReturn("unit-cluster");
+        when(info.clusterUuid()).thenReturn("uuid-xyz");
+        when(info.version()).thenReturn(version);
+        when(info.tagline()).thenReturn("You Know, for Search");
+
+        // Capture the thread on which the (blocking) client call actually executes.
+        AtomicReference<String> executionThread = new AtomicReference<>();
+        when(client.info()).thenAnswer(invocation -> {
+            executionThread.set(Thread.currentThread().getName());
+            return info;
+        });
+
+        JavaClientConnectionService service = new JavaClientConnectionService(client);
+        String callerThread = Thread.currentThread().getName();
+
+        StepVerifier.create(service.clusterInfo())
+                .expectNextCount(1)
+                .verifyComplete();
+
+        // The blocking work must be isolated onto a bounded-elastic worker, NOT the caller thread
+        // (which, in a WebFlux app, would be the event-loop thread we must never block).
+        String actual = executionThread.get();
+        org.junit.jupiter.api.Assertions.assertNotNull(actual, "client.info() was never invoked");
+        org.junit.jupiter.api.Assertions.assertTrue(
+                actual.startsWith("boundedElastic-"),
+                "expected blocking call on a boundedElastic worker but ran on: " + actual);
+        org.junit.jupiter.api.Assertions.assertNotEquals(
+                callerThread, actual, "blocking call must not run on the subscribing/caller thread");
+    }
+
+    @Test
+    void blockingCallIsLazyAndNotInvokedBeforeSubscription() throws IOException {
+        ElasticsearchClient client = mock(ElasticsearchClient.class);
+        InfoResponse info = mock(InfoResponse.class);
+        ElasticsearchVersionInfo version = mock(ElasticsearchVersionInfo.class);
+        when(version.number()).thenReturn("9.4.8");
+        when(info.clusterName()).thenReturn("unit-cluster");
+        when(info.clusterUuid()).thenReturn("uuid-xyz");
+        when(info.version()).thenReturn(version);
+        when(info.tagline()).thenReturn("You Know, for Search");
+        AtomicBoolean invoked = new AtomicBoolean(false);
+        when(client.info()).thenAnswer(invocation -> {
+            invoked.set(true);
+            return info;
+        });
+
+        JavaClientConnectionService service = new JavaClientConnectionService(client);
+
+        // Building the Mono must not trigger the blocking call (Mono.fromCallable is lazy).
+        service.clusterInfo();
+        verify(client, never()).info();
+        org.junit.jupiter.api.Assertions.assertFalse(invoked.get(),
+                "blocking client call must not happen until the Mono is subscribed");
     }
 }

@@ -1,111 +1,85 @@
 # Chapter 01 Verification Report
 
-> Latest run documents the **refactoring** of Chapter 01 (layered package structure) plus the
-> permanent steering best-practices update. All mandatory gates were re-executed against a real
-> Elasticsearch 9.4.8 after the refactor.
+> This run documents the **final code-review improvements**: documentation sync, exception
+> classification (503/502/500) with secure generic bodies, additional service and exception
+> unit tests (including blocking-execution isolation), and git traceability. All mandatory
+> gates were re-executed against a real Elasticsearch 9.4.8.
 
-- **Timestamp (with timezone):** 2026-10-23 16:09:11 +07 (ICT, Asia/Bangkok)
-- **Git commit/branch (if available):** N/A — workspace is not a git repository (`git status` → "not a git repository"). No commits were made.
+- **Timestamp (with timezone):** 2026-10-23 16:27:11 +07 (ICT, Asia/Bangkok)
+- **Git metadata:**
+  - Branch: `main`
+  - Committed revision at verification time: `de75b1a` (`de75b1a588eae5dc89e5757425a692d2480bb286`) — "refactor(01-basic-connection): layered structure + steering best practices"
+  - The code-review changes described here were **uncommitted at verification time** (working-tree modifications), verified in the working tree. Modified: `README.md`, `exception/GlobalExceptionHandler.java`, `controller/SpringDataConnectionControllerTest.java`, `service/JavaClientConnectionServiceTest.java`; added: `exception/GlobalExceptionHandlerTest.java`, `exception/ErrorThrowingTestController.java`. Commit after approval to bind this report to a concrete revision.
 - **Versions:**
   - Java: OpenJDK Temurin **21.0.2** (LTS, arm64)
   - Maven: Apache **3.9.9** (invoked with `JAVA_HOME` → Temurin 21.0.2)
-  - Spring Boot: **4.1.2**
-  - Spring Framework: 7.0.10 (from Boot BOM)
-  - Spring Data Elasticsearch: **6.1.2** (via Spring Data BOM 2026.0.2) — reactive client
-  - Elasticsearch Java API Client (`co.elastic.clients:elasticsearch-java`): **9.4.8** (Boot-managed)
+  - Spring Boot: **4.1.2**; Spring Framework: 7.0.10
+  - Spring Data Elasticsearch: **6.1.2** (via Spring Data BOM 2026.0.2)
+  - Elasticsearch Java API Client (`co.elastic.clients`): **9.4.8**
   - Elasticsearch server image: **elasticsearch:9.4.8** (arm64)
-  - Testcontainers: 2.0.5 (Boot-managed; modules `testcontainers-junit-jupiter`, `testcontainers-elasticsearch`)
-  - Docker: client/server **25.0.2**; Docker Compose v2.24.3-desktop.1
-- **Environment and preconditions:**
-  - macOS (Apple Silicon / arm64). Default system `java`/`mvn` point to Java 17; JDK 21 selected explicitly via `JAVA_HOME` for every Maven/app command.
-  - Docker Desktop daemon running and confirmed before verification.
+  - Testcontainers: 2.0.5; Docker: client/server **25.0.2**; Compose v2.24.3-desktop.1
+- **Environment:** macOS (arm64). Default `java`/`mvn` resolve to Java 17; JDK 21 selected explicitly via `JAVA_HOME`. Docker Desktop daemon running.
 
-## What changed in this run (refactoring)
-- Internal package structure moved from **package-by-client** (`springdata/`, `javaclient/`, `web/`) to a **layered** structure (`controller/`, `service/`, `dto/`, `exception/`); tests mirror it (`controller/`, `service/`, `integration/`).
-- Classes renamed: `*ElasticsearchController` → `controller/*ConnectionController`; `*ElasticsearchService` → `service/*ConnectionService`; `web/GlobalErrorHandler` → `exception/GlobalExceptionHandler`.
-- Added two meaningful service unit tests using `StepVerifier` (mapping + error propagation).
-- **Preserved**: base package, endpoint paths, HTTP status codes, response DTO contracts, reactive execution strategy (boundedElastic for the blocking client), 503 error-handling behavior, versions, and dependencies (no new ones).
-- Steering: added permanent section "Spring Boot Project Structure & Coding Best Practices" to `.kiro/steering/structure.md` (and corrected a "12"→"13" chapter-count reference). No mandatory verification/approval rules were weakened.
+## What changed in this run
+- **Documentation sync** (`README.md`): structure tree, Mermaid diagram, and testing section now match the refactored code; added an error-classification table and error-handling takeaway.
+- **Exception handling** (`GlobalExceptionHandler`): no longer maps everything to 503. Now classifies:
+  - connectivity/availability failures (`ConnectException` / `UnknownHostException` / `IOException`, incl. `TransportException`) → **503**;
+  - Elasticsearch error responses (`ElasticsearchException`) → **502**;
+  - unexpected application errors → **500**.
+  Bodies remain generic `ProblemDetail` (no host/URI/credential/stack-trace leakage); full details are logged server-side. A bounded cause-chain walk catches connectivity failures wrapped by the reactive transport.
+- **Tests added:** `exception/GlobalExceptionHandlerTest` (5 cases: 503 connect, 503 IO + no-leak, 502 ES response + no-leak, 503 wrapped-connect, 500 unexpected + no-leak) and 2 `JavaClientConnectionServiceTest` cases for **blocking execution isolation** (runs on `boundedElastic-*` worker, not caller thread; `Mono.fromCallable` laziness). Updated the Spring Data controller test's failure case to use a `ConnectException` (503).
+- **Preserved:** endpoint paths, successful response contracts, reactive execution strategy, versions, dependencies (none added).
 
 ## Gate results
 
-| Gate | Command / evidence location | Expected | Actual | Status |
+| Gate | Command / evidence | Expected | Actual | Status |
 |---|---|---|---|---|
-| Maven build + unit tests | `mvn clean verify` (surefire) | BUILD SUCCESS, unit tests pass | 11 unit tests, 0 failures | PASS |
-| Integration tests (real ES) | `integration/ElasticsearchConnectionIT` via Testcontainers ES 9.4.8 | all pass, both clients contact ES | 4/4 pass; asserted version 9.4.8, cluster name, status, nodes | PASS |
-| Full build | `mvn clean verify` | BUILD SUCCESS | BUILD SUCCESS (total 27.4s) | PASS |
-| Docker startup + readiness | `docker compose -p ch01 up -d` + `/_cluster/health` + `ps` | cluster reachable, container healthy | `status: green`, 1 node; container `Up (healthy)`, bound `127.0.0.1:9200` | PASS |
-| Application startup | `java -jar target/basic-connection.jar` | app listening | `Netty started on port 8080 (http)`, started in ~1.25s | PASS |
-| cURL requests (4 endpoints) | see "Verified cURL requests" | HTTP 200 + expected body | all 200, correct real data from live ES | PASS |
-| Field assertions | `jq -e` on each response | client/version/uuid/status fields valid | all 4 assertions PASS | PASS |
-| Failure path | `docker compose stop elasticsearch` then cURL | HTTP 503, no leaked details | both endpoints 503 with generic ProblemDetail | PASS |
-| Regression (paths/contracts) | compared endpoints, statuses, response fields pre/post refactor | unchanged | identical paths, statuses, and DTO fields | PASS |
-| README verification | executed up / readiness / verify / curl / down commands | works as documented | all documented commands executed successfully | PASS |
+| Maven build + unit tests | `mvn clean verify` (surefire) | BUILD SUCCESS, unit tests pass | 18 unit tests, 0 failures | PASS |
+| Integration tests (real ES) | `integration/ElasticsearchConnectionIT` (Testcontainers 9.4.8) | all pass | 4/4 pass | PASS |
+| Full build | `mvn clean verify` | BUILD SUCCESS | BUILD SUCCESS (27.3s) | PASS |
+| Docker startup + readiness | `docker compose -p ch01 up -d` + `/_cluster/health` + `ps` | reachable, healthy | `green`, 1 node; `Up (healthy)`, `127.0.0.1:9200` | PASS |
+| Application startup | `java -jar target/basic-connection.jar` | listening | Netty on 8080 | PASS |
+| cURL success (4 endpoints) | see below | 200 + expected body | all 200, correct live data | PASS |
+| Field assertions | `jq -e` | fields valid | all PASS | PASS |
+| Failure path — unreachable | `docker compose stop elasticsearch` + cURL | 503, no leak | both clients 503 "Elasticsearch unavailable", no leak | PASS |
+| Error classification (unit) | `GlobalExceptionHandlerTest` | 503/502/500 + no leak | 5/5 pass | PASS |
+| Blocking execution isolation (unit) | `JavaClientConnectionServiceTest` | runs on boundedElastic, lazy | 2/2 pass | PASS |
+| Regression (paths/contracts) | compare pre/post | unchanged | identical paths/statuses/success fields | PASS |
+| README verification | executed up/readiness/verify/curl/down | works as documented | all commands succeeded | PASS |
 
 ## Test execution evidence (counts)
-Surefire (unit):
-- `controller.JavaClientConnectionControllerTest` — Tests run: 2, Failures: 0
-- `controller.SpringDataConnectionControllerTest` — Tests run: 3, Failures: 0
-- `service.JavaClientConnectionServiceTest` — Tests run: 3, Failures: 0
-- `service.SpringDataConnectionServiceTest` — Tests run: 3, Failures: 0
-- Total unit: **11**, 0 failures.
+Surefire (unit) — total **18**, 0 failures:
+- `controller.JavaClientConnectionControllerTest` — 2
+- `controller.SpringDataConnectionControllerTest` — 3
+- `exception.GlobalExceptionHandlerTest` — 5
+- `service.JavaClientConnectionServiceTest` — 5
+- `service.SpringDataConnectionServiceTest` — 3
 
-Failsafe (integration):
-- `integration.ElasticsearchConnectionIT` — Tests run: 4, Failures: 0, Errors: 0, Skipped: 0 (Testcontainers started `elasticsearch:9.4.8`, container up ~16s).
+Failsafe (integration): `integration.ElasticsearchConnectionIT` — 4, 0 failures. Final line: `BUILD SUCCESS`.
 
-Final line: `BUILD SUCCESS`.
+## Verified cURL requests (real app vs live ES 9.4.8)
 
-## Verified cURL requests
+Success (all HTTP 200):
+- `GET /api/spring-data/elasticsearch/health` → `{"client":"spring-data","clusterName":"docker-cluster","status":"green","numberOfNodes":1,"reachable":true}`
+- `GET /api/spring-data/elasticsearch/cluster-info` → `{"client":"spring-data","clusterName":"docker-cluster","clusterUuid":"1hlN1keZQBqqeNGwkUVhvA","versionNumber":"9.4.8","tagline":"You Know, for Search"}`
+- `GET /api/java-client/elasticsearch/health` → `{"client":"java-client","clusterName":"docker-cluster","status":"green","numberOfNodes":1,"reachable":true}`
+- `GET /api/java-client/elasticsearch/cluster-info` → `{"client":"java-client","clusterName":"docker-cluster","clusterUuid":"1hlN1keZQBqqeNGwkUVhvA","versionNumber":"9.4.8","tagline":"You Know, for Search"}`
+- Field assertions (`jq -e`): all PASS. Both clients returned the same `clusterUuid`, confirming a real shared cluster.
 
-Real running app (`http://127.0.0.1:8080`) against live Elasticsearch 9.4.8 (`docker compose -p ch01`).
-
-**1) `GET /api/spring-data/elasticsearch/health`**
-- Expected: 200; `client=spring-data`, `reachable=true`, `status ∈ {green,yellow,red}`, `numberOfNodes>=1`
-- Actual: `200` — `{"client":"spring-data","clusterName":"docker-cluster","status":"green","numberOfNodes":1,"reachable":true}`
-- Assertion: PASS
-
-**2) `GET /api/spring-data/elasticsearch/cluster-info`**
-- Expected: 200; `client=spring-data`, `versionNumber=9.4.8`, non-empty `clusterUuid`, `tagline="You Know, for Search"`
-- Actual: `200` — `{"client":"spring-data","clusterName":"docker-cluster","clusterUuid":"tT0SnLIqQleh91wIGWSWnA","versionNumber":"9.4.8","tagline":"You Know, for Search"}`
-- Assertion: PASS
-
-**3) `GET /api/java-client/elasticsearch/health`**
-- Expected: 200; `client=java-client`, `reachable=true`, valid `status`
-- Actual: `200` — `{"client":"java-client","clusterName":"docker-cluster","status":"green","numberOfNodes":1,"reachable":true}`
-- Assertion: PASS
-
-**4) `GET /api/java-client/elasticsearch/cluster-info`**
-- Expected: 200; `client=java-client`, `versionNumber=9.4.8`, non-empty `clusterUuid`
-- Actual: `200` — `{"client":"java-client","clusterName":"docker-cluster","clusterUuid":"tT0SnLIqQleh91wIGWSWnA","versionNumber":"9.4.8","tagline":"You Know, for Search"}`
-- Assertion: PASS
-
-> Both clients returned the **same `clusterUuid`** (`tT0SnLIqQleh91wIGWSWnA`), confirming they contacted the same live cluster rather than returning constant/mocked values.
-
-**Failure path (Elasticsearch stopped):**
-- Command: `docker compose -p ch01 stop elasticsearch` then cURL both health endpoints
-- Expected: HTTP 503, generic message, no connection details/credentials
-- Actual: both returned `503` — `{"detail":"Could not complete the request against Elasticsearch. Check that the cluster is running and reachable.","instance":"/api/.../health","status":503,"title":"Elasticsearch request failed"}`
-- Assertion: PASS
+Failure — Elasticsearch stopped (`docker compose -p ch01 stop elasticsearch`):
+- `GET /api/spring-data/.../health` → **503** `{"title":"Elasticsearch unavailable","status":503,"detail":"Could not reach Elasticsearch. ...","instance":"/api/spring-data/elasticsearch/health"}`
+- `GET /api/java-client/.../health` → **503** (same shape)
+- Assertion: `status==503 && title=="Elasticsearch unavailable" && detail does not contain "9200"/"127.0.0.1"` → PASS (no infrastructure leak).
 
 ## Regression result
-- Endpoint paths: unchanged (`/api/spring-data/...`, `/api/java-client/...`).
-- HTTP response contracts: unchanged (same DTO field names and types for health and cluster-info).
-- Functionality & ES integration behavior: unchanged (both clients contact real ES; success 200, failure 503).
-- Reactive execution safety: unchanged (synchronous Java API Client still offloaded via `Mono.fromCallable(...).subscribeOn(Schedulers.boundedElastic())`; no `.block()` in request handling).
-- Status: **PASS** — refactor is behavior-preserving.
-
-## Steering file changes
-- `.kiro/steering/structure.md`: appended permanent section **"Spring Boot Project Structure & Coding Best Practices"** (Package Organization, Separation of Concerns, Spring Boot Standards, Reactive Programming, Testing Standards, Repository Consistency); corrected chapter-count reference 12 → 13. `inclusion: always` front matter preserved. No verification/approval rules weakened.
-
-## Dynamic vs deterministic values
-- Deterministic (exact assertion): HTTP status, `client`, `versionNumber=9.4.8` (pinned image), `tagline`.
-- Dynamic (tolerant checks): `clusterUuid` (non-empty), `status` (one of green/yellow/red), `clusterName` (`docker-cluster` default, configurable via `cluster.name`).
+- Endpoint paths unchanged; successful response DTO fields unchanged; reactive safety unchanged (Java API Client still offloaded to `boundedElastic`, no `.block()` in request handling). The only intentional behavioral change is **error status classification** (previously always 503; now 503/502/500 by cause), which is the requested improvement. Status: **PASS**.
 
 ## Known issues / limitations / cleanup
 - No test failures. No gates BLOCKED or NOT VERIFIED.
-- Environment note: machine default `java`/`mvn` resolve to Java 17 (x86_64); JDK 21 must be selected via `JAVA_HOME`. All verification used JDK 21 explicitly.
-- Cleanup performed: application process stopped; `docker compose -p ch01 down` removed container and network. The compose file defines no persistent volume, so no data was deleted.
-- Mockito self-attach warning appeared (JDK agent dynamic-load deprecation); informational only, tests passed.
+- The error-classification behavior change is intentional and documented; it does not affect success-path contracts.
+- Environment note: machine default `java`/`mvn` are Java 17; JDK 21 used explicitly via `JAVA_HOME`.
+- Cleanup: app stopped; `docker compose -p ch01 down` removed container + network (no persistent volume).
+- Mockito self-attach warning (JDK agent dynamic-load deprecation) is informational only.
 
 ## Overall status
-**COMPLETED** — the refactor preserves all public contracts and behavior, and every mandatory gate passed with evidence from real execution (real Maven build, 11 unit + 4 integration tests, real Dockerized Elasticsearch 9.4.8, real app startup, real cURL with field assertions, demonstrated failure path, and regression confirmation).
+**COMPLETED** — all mandatory gates passed with real execution evidence (18 unit + 4 integration tests, real Dockerized ES 9.4.8, real app startup, real cURL success + classified failure paths, regression confirmed). Documentation is synchronized with the code. Changes remain uncommitted pending user approval.
