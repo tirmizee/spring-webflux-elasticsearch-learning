@@ -8,6 +8,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.data.elasticsearch.core.ReactiveElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.ReactiveIndexOperations;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Mono;
 
 /**
  * Creates the {@code learning-products} index with the {@link Product} mapping at startup,
@@ -33,7 +34,7 @@ public class IndexInitializer implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         ReactiveIndexOperations indexOps = operations.indexOps(Product.class);
         Boolean created = indexOps.exists()
-                .flatMap(exists -> exists ? reactor.core.publisher.Mono.just(false) : indexOps.createWithMapping())
+                .flatMap(exists -> exists ? Mono.just(false) : indexOps.createWithMapping())
                 .block();
         if (Boolean.TRUE.equals(created)) {
             log.info("Created index 'learning-products' with Product mapping");

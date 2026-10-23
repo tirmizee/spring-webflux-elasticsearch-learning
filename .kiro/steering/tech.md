@@ -24,6 +24,15 @@ Before writing code, inspect machine/runtime and existing project files. Determi
 - Meaningful tests rather than trivial coverage; never disable tests or swallow failures.
 - Use commands confirmed compatible with the local shell and environment.
 
+## Java Imports & Code Readability
+Applies to all current and future learning chapters.
+- Prefer standard Java `import` statements over fully qualified class names inside method bodies.
+- Avoid unnecessary fully qualified references such as `reactor.core.publisher.Mono.just(...)` when `Mono.just(...)` is clear with an import.
+- Use explicit imports for commonly used classes; follow standard Java import organization and remove unused imports.
+- Fully qualified class names are acceptable when needed to resolve a naming conflict or genuinely improve clarity.
+- Do not introduce wildcard imports merely to shorten code.
+- Do not change otherwise-correct application logic solely for stylistic consistency; this is a readability convention, not a mandate to refactor working code.
+
 ## Client compatibility
 - Verify Spring Data Elasticsearch supports the chosen Elasticsearch server release; do not select the Elasticsearch Docker image by latest-tag guessing.
 - Match local/no-auth Chapter 01's actual HTTP/TLS settings. API key Chapter 02 must explicitly explain HTTPS, secure key handling, creation/privileges and client configuration.
