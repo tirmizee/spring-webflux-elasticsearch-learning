@@ -1,7 +1,6 @@
 # 🔌 Chapter 01 — Basic Connection
 
-> โปรเจกต์ Spring Boot WebFlux อิสระ ที่สาธิตการเชื่อมต่อ Elasticsearch แบบ local (ไม่มี authentication)
-> ด้วย **สอง client** ที่แยกกันชัดเจน: Spring Data Elasticsearch (reactive) และ Elasticsearch Java API Client (official)
+> บทนี้สาธิตการเชื่อมต่อ Spring Boot WebFlux กับ Elasticsearch ที่รันอยู่บนเครื่อง Local โดยไม่ใช้ Authentication ผ่าน Elasticsearch Client สองรูปแบบ ได้แก่ Spring Data Elasticsearch (Reactive) และ Elasticsearch Java API Client (Blocking) เพื่อเปรียบเทียบแนวทางการเชื่อมต่อและการทำงานของแต่ละ Client
 
 บทเริ่มต้นของคลังเรียนรู้ จบบทนี้คุณจะ: ต่อ Spring WebFlux เข้ากับ Elasticsearch node แบบ local ได้จริง,
 เรียก **cluster health** และ **cluster info** ผ่าน REST ด้วยทั้งสอง client, และเข้าใจความต่างระหว่าง
