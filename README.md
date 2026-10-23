@@ -17,7 +17,7 @@
 | # | Directory | Topic | Status |
 |---|---|---|---|
 | 01 | [`01-basic-connection`](01-basic-connection/) | Local unauthenticated connectivity, two clients, cluster information | verified |
-| 02 | `02-api-key-authentication` | API key security and client setup | planned |
+| 02 | [`02-api-key-authentication`](02-api-key-authentication/) | API key security and client setup | verified |
 | 03 | `03-document-crud` | Index/get/update/delete | planned |
 | 04 | `04-search-queries` | Term, match, bool queries | planned |
 | 05 | `05-elasticsearch-filtering` | Term/terms, range, exists, bool filter/must_not, AND/OR, query vs filter context, combining filters with full-text search | planned |
@@ -30,18 +30,10 @@
 | 12 | `12-index-recreation` | Recreate, resync, safe lifecycle | planned |
 | 13 | `13-integration-testing` | Testcontainers and integration strategies | planned |
 
-## Chapter 05 — Elasticsearch Filtering (scope)
-บทนี้เน้นเรื่อง filtering โดยเฉพาะ ครอบคลุม:
-- Term และ Terms filters
-- Range filters
-- Exists queries
-- Bool filter และ `must_not`
-- AND / OR filtering
-- Query Context vs Filter Context
-- การรวม filter เข้ากับ full-text search
-
 ## Getting Started
 Chapter 01 พร้อมใช้งานและผ่านการ verify แล้ว เริ่มต้นที่ [`01-basic-connection/README.md`](01-basic-connection/README.md)
 (prerequisites, `docker compose -p ch01 up -d`, การรันแอป, cURL examples และการ stop/cleanup)
 
-บทที่เหลือ (02–13) ยังเป็น `planned` จะถูก implement ทีละบทเมื่อได้รับการอนุมัติเท่านั้น
+Chapter 02 (API key authentication) ก็ implement และ verify แล้ว ดู [`02-api-key-authentication/README.md`](02-api-key-authentication/README.md)
+
+บทที่เหลือ (03–13) ยังเป็น `planned` จะถูก implement ทีละบทเมื่อได้รับการอนุมัติเท่านั้น

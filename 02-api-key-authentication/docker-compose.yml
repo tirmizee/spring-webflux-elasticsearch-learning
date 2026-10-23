@@ -1,0 +1,33 @@
+# Chapter 02 - local, single-node Elasticsearch with SECURITY ENABLED, for learning ONLY.
+#
+# Security (xpack.security.enabled=true) is ON so that API keys work. The HTTP layer is left on
+# plain HTTP (no TLS) purely to keep this learning setup reproducible without managing
+# self-signed certificates. API key authentication is fully exercised either way.
+#
+# >>> PRODUCTION WARNING <<<
+#   - In any real/shared/public environment you MUST also enable TLS on the HTTP layer
+#     (xpack.security.http.ssl.enabled=true) so the API key is never sent over the wire in clear.
+#   - Never expose this node beyond localhost. The port is bound to 127.0.0.1 only.
+#   - The bootstrap password below is for LOCAL learning only; supply it via the environment.
+services:
+  elasticsearch:
+    image: elasticsearch:9.4.8
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      # HTTP-layer TLS disabled for local learning only (see production warning above).
+      - xpack.security.http.ssl.enabled=false
+      # Bootstrap password for the built-in 'elastic' superuser. Provide via your shell:
+      #   export ELASTIC_PASSWORD=...   (see .env.example)
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:?set ELASTIC_PASSWORD in your environment}
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      # Loopback only.
+      - "127.0.0.1:9200:9200"
+    healthcheck:
+      # Readiness probe authenticates as 'elastic' so it proves security is up and answering.
+      test: ["CMD-SHELL", "curl -fsS -u elastic:$$ELASTIC_PASSWORD http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 30s

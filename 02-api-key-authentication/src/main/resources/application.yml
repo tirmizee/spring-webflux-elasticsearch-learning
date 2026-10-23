@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: 02-api-key-authentication
+  elasticsearch:
+    # Single set of properties that configures BOTH clients (reactive + Java API Client).
+    uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
+    # API key authentication. The value is the "encoded" form returned by the ES
+    # create-API-key API, i.e. base64(id:api_key). Supplied via environment variable -
+    # NEVER hardcode a real key here and never commit it.
+    api-key: ${ELASTICSEARCH_API_KEY:}
+    connection-timeout: 5s
+    socket-timeout: 10s
+
+server:
+  port: ${SERVER_PORT:8081}
+
+logging:
+  level:
+    # WIRE logging is intentionally left at WARN. Enabling DEBUG here would print the
+    # Authorization header (the API key) to the logs, which must never happen.
+    org.springframework.data.elasticsearch.client.WIRE: WARN
