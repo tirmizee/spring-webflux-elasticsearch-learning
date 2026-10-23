@@ -31,6 +31,7 @@
 | 11 | `11-reactive-error-handling` | Timeout, retry, error mapping | ⏳ Planned |
 | 12 | `12-index-recreation` | Recreate, resync, safe lifecycle | ⏳ Planned |
 | 13 | `13-integration-testing` | Testcontainers และ integration strategies | ⏳ Planned |
+| 14 | `14-field-collapse` | Field collapse, grouped hits, inner_hits, collapse vs aggregations | ⏳ Planned |
 
 > ลิงก์ชี้ไปยังโฟลเดอร์เฉพาะบทที่สร้างแล้วเท่านั้น บทที่ยัง ⏳ Planned จะถูก implement ทีละบทเมื่อได้รับการอนุมัติ
 
