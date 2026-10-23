@@ -89,4 +89,4 @@ Security enforcement sanity:
 - None blocking. 403 end-to-end is verified via unit test only (see above). TLS on the HTTP layer is intentionally disabled for local learning (documented; production requires HTTPS).
 
 ## Overall status
-**COMPLETED** — build, 20 unit + 5 integration tests, real secured Elasticsearch 9.4.8, real API key create/use/revoke, and real cURL for valid/invalid/revoked keys all pass. No credential leakage observed. Chapter 01 untouched; Chapter 02 runs independently. Changes are uncommitted pending user approval.
+**COMPLETED** — build, 20 unit + 5 integration tests, real secured Elasticsearch 9.4.8, real API key create/use/revoke, and real cURL for valid/invalid/revoked keys all pass. No credential leakage observed. Chapter 01 untouched; Chapter 02 runs independently.
