@@ -33,6 +33,36 @@ Applies to all current and future learning chapters.
 - Do not introduce wildcard imports merely to shorten code.
 - Do not change otherwise-correct application logic solely for stylistic consistency; this is a readability convention, not a mandate to refactor working code.
 
+## Java Multi-line Argument Formatting
+Applies to all current and future learning chapters. Readability convention only — never change behavior to satisfy it.
+- When a constructor call or method invocation spans multiple lines, put **one argument per line**.
+- Do not place several arguments on the same line within a multi-line invocation.
+- Put the **closing parenthesis on its own line**, aligned with the start of the invocation statement.
+- Keep argument ordering unchanged.
+- Single-line invocations are fine when short, clear, and readable — only break to multiple lines when length/clarity calls for it.
+- Apply equally to constructor invocations, method invocations, factory method calls, and record instantiation.
+- Do not reformat unrelated code solely to enforce this; keep formatting changes minimal and focused.
+
+Preferred:
+```java
+return new ProductHit(
+        id,
+        p.getName(),
+        p.getCategory(),
+        p.getBrand(),
+        p.getDescription(),
+        p.getPrice(),
+        p.getQuantity(),
+        score
+);
+```
+Avoid:
+```java
+return new ProductHit(
+        id, p.getName(), p.getCategory(), p.getBrand(),
+        p.getDescription(), p.getPrice(), p.getQuantity(), score);
+```
+
 ## Lombok Usage Guidelines
 Applies to all current and future learning chapters. Lombok is **optional, not mandatory** — a tool to remove genuine boilerplate, never added for uniformity.
 - Prefer **Java records** for immutable DTOs; do not replace a record with a Lombok class.

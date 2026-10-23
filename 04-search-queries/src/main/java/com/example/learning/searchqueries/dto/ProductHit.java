@@ -21,7 +21,14 @@ public record ProductHit(
 ) {
     public static ProductHit of(String id, Float score, Product p) {
         return new ProductHit(
-                id, p.getName(), p.getCategory(), p.getBrand(),
-                p.getDescription(), p.getPrice(), p.getQuantity(), score);
+                id,
+                p.getName(),
+                p.getCategory(),
+                p.getBrand(),
+                p.getDescription(),
+                p.getPrice(),
+                p.getQuantity(),
+                score
+        );
     }
 }
