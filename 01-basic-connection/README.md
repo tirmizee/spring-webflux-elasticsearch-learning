@@ -205,9 +205,12 @@ curl -s http://127.0.0.1:8080/api/spring-data/elasticsearch/cluster-info \
 
 | สาเหตุ | Exception | HTTP status | title |
 |---|---|---|---|
+| request ไป Elasticsearch timeout | `SocketTimeoutException` / `java.util.concurrent.TimeoutException` | **504** Gateway Timeout | `Elasticsearch timeout` |
 | ติดต่อ Elasticsearch ไม่ได้ (node ดับ, connection refused, unknown host, I/O) | `ConnectException` / `UnknownHostException` / `IOException` (รวม `TransportException`) | **503** Service Unavailable | `Elasticsearch unavailable` |
 | ติดต่อได้ แต่ ES ตอบ error response | `ElasticsearchException` | **502** Bad Gateway | `Elasticsearch returned an error` |
 | error อื่นที่ไม่คาดคิดในแอป | อื่น ๆ | **500** Internal Server Error | `Internal server error` |
+
+> หมายเหตุ: `SocketTimeoutException` เป็น subclass ของ `IOException` — handler จึงจัด timeout เป็น 504 ก่อน (เฉพาะเจาะจงกว่า) ไม่ตกไปเป็น 503 และกรณี exception ถูกห่อ (wrapped) จะไล่ดู cause chain เพื่อจำแนกให้ถูก
 
 Failure path (ES ดับ) → ได้ HTTP **503**:
 ```bash
@@ -233,7 +236,7 @@ mvn clean verify
 - **Service tests** (`service/*Test`, surefire): mock Elasticsearch client แล้วใช้ `StepVerifier` ยืนยันว่า
   - map response เป็น DTO ถูกต้อง, stream มีค่าเดียวแล้ว complete, และ error ถูก propagate ออกมา (ไม่ถูกกลืน)
   - สำหรับ Java API Client (blocking): ยืนยันว่า blocking call ถูก **isolate ไปรันบน `boundedElastic` worker** (ไม่ใช่ caller/event-loop thread) และ `Mono.fromCallable` เป็น lazy (ไม่เรียก client ก่อน subscribe)
-- **Exception tests** (`exception/GlobalExceptionHandlerTest`, surefire, `@WebFluxTest`): ยืนยันการจำแนก error (503/502/500) และ body ไม่ leak host/uri/stack trace
+- **Exception tests** (`exception/GlobalExceptionHandlerTest`, surefire, `@WebFluxTest`): ยืนยันการจำแนก error (timeout → 504, unreachable → 503, ES error → 502, อื่น ๆ → 500) รวมถึงเคส wrapped exception และ body ไม่ leak host/uri/stack trace
 - **Integration test** (`integration/ElasticsearchConnectionIT`, failsafe ใน phase `verify`): สตาร์ต Elasticsearch 9.4.8 จริงด้วย Testcontainers แล้วเรียกทั้งสอง service เพื่อยืนยันว่าเชื่อมต่อ cluster จริง
   - ต้องมี Docker daemon ทำงานอยู่ มิฉะนั้น integration test จะรันไม่ได้
 
@@ -244,7 +247,7 @@ mvn clean verify
 - Reactive client เรียกได้ตรง ๆ แต่ synchronous client ต้องย้ายไป `boundedElastic()` เสมอในแอป WebFlux
 - ควร expose DTO เสถียรแทน payload ดิบของ vendor เพื่อให้ API contract ไม่เปลี่ยนตาม internal ของ ES
 - เวอร์ชัน client กับ server ควรตรงกัน (ที่นี่คือ 9.4.8 ทั้งคู่)
-- จำแนก error ตามสาเหตุ (unreachable → 503, ES error response → 502, อื่น ๆ → 500) ดีกว่าตอบ status เดียวกับทุกกรณี และต้องไม่ leak รายละเอียด infrastructure
+- จำแนก error ตามสาเหตุ (timeout → 504, unreachable → 503, ES error response → 502, อื่น ๆ → 500) ดีกว่าตอบ status เดียวกับทุกกรณี และต้องไม่ leak รายละเอียด infrastructure
 
 ## 11. Common Pitfalls
 - **Block event loop**: เรียก `ElasticsearchClient` (sync) ตรง ๆ บน thread ของ WebFlux → ใช้ `Mono.fromCallable(...).subscribeOn(Schedulers.boundedElastic())`

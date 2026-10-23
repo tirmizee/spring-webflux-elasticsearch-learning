@@ -8,6 +8,8 @@ import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.net.ConnectException;
+import java.net.SocketTimeoutException;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Test-only controller that raises each category of exception so {@link GlobalExceptionHandler}
@@ -19,6 +21,22 @@ public class ErrorThrowingTestController {
     @GetMapping("/throw/connect")
     Mono<String> connect() {
         return Mono.error(new ConnectException("Connection refused: localhost/127.0.0.1:9200"));
+    }
+
+    @GetMapping("/throw/socket-timeout")
+    Mono<String> socketTimeout() {
+        return Mono.error(new SocketTimeoutException("Read timed out after 10s to es-node-1:9200"));
+    }
+
+    @GetMapping("/throw/reactive-timeout")
+    Mono<String> reactiveTimeout() {
+        return Mono.error(new TimeoutException("Did not observe any item or terminal signal within 5000ms"));
+    }
+
+    @GetMapping("/throw/wrapped-timeout")
+    Mono<String> wrappedTimeout() {
+        return Mono.error(new RuntimeException("transport failure",
+                new SocketTimeoutException("Read timed out to 10.0.0.5:9200")));
     }
 
     @GetMapping("/throw/io")

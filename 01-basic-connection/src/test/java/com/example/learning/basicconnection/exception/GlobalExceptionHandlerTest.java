@@ -46,6 +46,43 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void socketTimeoutMapsTo504AndDoesNotLeakDetails() {
+        webTestClient.get().uri("/throw/socket-timeout")
+                .exchange()
+                .expectStatus().isEqualTo(504)
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Elasticsearch timeout")
+                .jsonPath("$.status").isEqualTo(504)
+                .jsonPath("$.detail").value(d -> {
+                    String detail = (String) d;
+                    if (detail.contains("es-node-1") || detail.contains("9200")) {
+                        throw new AssertionError("error body leaked infrastructure details: " + detail);
+                    }
+                });
+    }
+
+    @Test
+    void reactiveTimeoutMapsTo504() {
+        webTestClient.get().uri("/throw/reactive-timeout")
+                .exchange()
+                .expectStatus().isEqualTo(504)
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Elasticsearch timeout")
+                .jsonPath("$.status").isEqualTo(504);
+    }
+
+    @Test
+    void wrappedTimeoutMapsTo504NotUnavailable() {
+        // A SocketTimeoutException is an IOException; the wrapped-cause walk must classify it as
+        // a timeout (504), not as generic unavailability (503).
+        webTestClient.get().uri("/throw/wrapped-timeout")
+                .exchange()
+                .expectStatus().isEqualTo(504)
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Elasticsearch timeout");
+    }
+
+    @Test
     void elasticsearchResponseErrorMapsTo502() {
         webTestClient.get().uri("/throw/es")
                 .exchange()
