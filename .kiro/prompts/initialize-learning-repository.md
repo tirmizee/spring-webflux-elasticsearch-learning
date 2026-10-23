@@ -22,7 +22,7 @@ These steering rules are mandatory; if any conflict with this prompt, prefer the
 - Every chapter owns `pom.xml`, `docker-compose.yml`, README, app sources/tests and verification report.
 
 ## Chapter roadmap — write to root README
-01 `basic-connection`; 02 `api-key-authentication`; 03 `document-crud`; 04 `search-queries`; 05 `custom-analyzers`; 06 `sorting-pagination`; 07 `fuzzy-search`; 08 `index-management`; 09 `bulk-operations`; 10 `reactive-error-handling`; 11 `index-recreation`; 12 `integration-testing`.
+01 `basic-connection`; 02 `api-key-authentication`; 03 `document-crud`; 04 `search-queries`; 05 `elasticsearch-filtering`; 06 `custom-analyzers`; 07 `sorting-pagination`; 08 `fuzzy-search`; 09 `index-management`; 10 `bulk-operations`; 11 `reactive-error-handling`; 12 `index-recreation`; 13 `integration-testing`.
 
 ## Step A: Inspect and plan
 1. Inspect the workspace, `git status --short`, existing user project, Java/Maven/Docker tools, config and dependency constraints. Do not delete or overwrite existing code or uncommitted work. If the repository is the existing single-project `spring-web-flux-elastic-search`, propose safe adaptation and avoid destructive moves.

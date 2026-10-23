@@ -20,14 +20,15 @@ Build `spring-webflux-elasticsearch-learning`: a hands-on, progressive education
 | 02 | `02-api-key-authentication` | API key security and client setup |
 | 03 | `03-document-crud` | Index/get/update/delete |
 | 04 | `04-search-queries` | Term, match, bool queries |
-| 05 | `05-custom-analyzers` | Standard, Thai, ngram analysis |
-| 06 | `06-sorting-pagination` | Sorting, pagination, search_after |
-| 07 | `07-fuzzy-search` | Fuzzy, prefix and partial search |
-| 08 | `08-index-management` | Index/mappings/settings/templates |
-| 09 | `09-bulk-operations` | Batch and bulk indexing |
-| 10 | `10-reactive-error-handling` | Timeout, retry, error mapping |
-| 11 | `11-index-recreation` | Recreate, resync, safe lifecycle |
-| 12 | `12-integration-testing` | Testcontainers and integration strategies |
+| 05 | `05-elasticsearch-filtering` | Term/terms, range, exists, bool filter/must_not, AND/OR, query vs filter context, combining filters with full-text search |
+| 06 | `06-custom-analyzers` | Standard, Thai, ngram analysis |
+| 07 | `07-sorting-pagination` | Sorting, pagination, search_after |
+| 08 | `08-fuzzy-search` | Fuzzy, prefix and partial search |
+| 09 | `09-index-management` | Index/mappings/settings/templates |
+| 10 | `10-bulk-operations` | Batch and bulk indexing |
+| 11 | `11-reactive-error-handling` | Timeout, retry, error mapping |
+| 12 | `12-index-recreation` | Recreate, resync, safe lifecycle |
+| 13 | `13-integration-testing` | Testcontainers and integration strategies |
 
 ## Learning design
 - Practical explanations: what, why, how, execution path and pitfalls.

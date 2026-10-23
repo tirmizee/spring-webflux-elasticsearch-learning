@@ -1,0 +1,26 @@
+# Chapter 01 - local, single-node Elasticsearch for learning ONLY.
+#
+# Security is DISABLED so you can connect over plain HTTP without credentials.
+# This is acceptable for a local learning setup, but you must NEVER deploy an
+# Elasticsearch node with security disabled on a public or shared network.
+#
+# The port is bound to 127.0.0.1 so the node is reachable only from this machine.
+services:
+  elasticsearch:
+    image: elasticsearch:9.4.8
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      # Keep heap small so it runs comfortably on a laptop.
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      # host:container - bound to loopback only (local access from this machine).
+      - "127.0.0.1:9200:9200"
+    healthcheck:
+      # Readiness is based on the cluster actually answering, not just the container running.
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 30s

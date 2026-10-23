@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        Independent Spring Boot project for Chapter 01.
+        This project does NOT belong to any parent reactor; it inherits directly
+        from spring-boot-starter-parent so it can be built on its own.
+    -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.2</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.example.learning</groupId>
+    <artifactId>basic-connection</artifactId>
+    <version>1.0.0</version>
+    <name>01-basic-connection</name>
+    <description>Chapter 01: Basic local Elasticsearch connectivity with two clients</description>
+
+    <properties>
+        <java.version>21</java.version>
+        <!--
+            Elasticsearch server image version. Kept in sync with the
+            co.elastic.clients version managed by the Spring Boot 4.1.2 BOM (9.4.8).
+        -->
+        <elasticsearch.image.version>9.4.8</elasticsearch.image.version>
+    </properties>
+
+    <dependencies>
+        <!-- WebFlux: reactive web layer -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
+        <!--
+            Approach 1: Spring Data Elasticsearch (reactive).
+            Provides ReactiveElasticsearchOperations and auto-configured reactive client.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
+        </dependency>
+
+        <!--
+            Approach 2: official Elasticsearch Java API Client.
+            Version is managed by the Spring Boot BOM (9.4.8). Synchronous/blocking API.
+        -->
+        <dependency>
+            <groupId>co.elastic.clients</groupId>
+            <artifactId>elasticsearch-java</artifactId>
+        </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!--
+            Spring Boot 4 modularized the test slices. @WebFluxTest now lives in the
+            dedicated spring-boot-webflux-test module (org.springframework.boot.webflux.test.autoconfigure).
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-webflux-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!--
+            Real-server integration testing with Testcontainers.
+            Testcontainers 2.x renamed the modules with a "testcontainers-" prefix,
+            e.g. testcontainers-junit-jupiter / testcontainers-elasticsearch.
+            Versions come from the testcontainers-bom imported below.
+        -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-elasticsearch</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Align all Testcontainers modules to the version managed by the Spring Boot BOM. -->
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <finalName>basic-connection</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <!--
+                Surefire runs unit/controller tests (*Test / *Tests).
+                Failsafe runs integration tests (*IT) in the integration-test phase,
+                so `mvn clean verify` executes BOTH unit and integration tests.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

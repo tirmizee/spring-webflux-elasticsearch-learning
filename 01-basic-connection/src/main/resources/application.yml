@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: 01-basic-connection
+  elasticsearch:
+    # Single property that configures BOTH clients:
+    #  - the Spring Data reactive client (ReactiveElasticsearchClient)
+    #  - the official Elasticsearch Java API Client (ElasticsearchClient)
+    # Override with the ELASTICSEARCH_URIS environment variable in other environments.
+    uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
+    connection-timeout: 5s
+    socket-timeout: 10s
+
+server:
+  port: ${SERVER_PORT:8080}
+
+logging:
+  level:
+    # Helpful while learning: shows the actual transport-level requests to Elasticsearch.
+    org.springframework.data.elasticsearch.client.WIRE: INFO
