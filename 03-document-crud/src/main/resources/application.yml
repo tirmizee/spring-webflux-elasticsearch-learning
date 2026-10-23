@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: 03-document-crud
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
+    # API key (encoded form) supplied via environment; never hardcode or commit a real key.
+    api-key: ${ELASTICSEARCH_API_KEY:}
+    connection-timeout: 5s
+    socket-timeout: 10s
+
+server:
+  port: ${SERVER_PORT:8082}
+
+logging:
+  level:
+    # Kept at WARN so the Authorization header (API key) is never written to logs.
+    org.springframework.data.elasticsearch.client.WIRE: WARN
