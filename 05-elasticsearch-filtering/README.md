@@ -306,20 +306,32 @@ curl -s -XPOST "$base/api/java-client/products/filter/compose" -H 'Content-Type:
 > `score` ใน query context เป็นค่า Lucene ที่เปลี่ยนได้ตาม scoring — ตรวจแค่ว่า `> 0` อย่า pin ค่า exact
 
 ### Input validation (ได้ HTTP 400)
+ทุก invalid input จะได้ **HTTP 400** (sanitized `ProblemDetail`) **ก่อน** เรียก Elasticsearch — ไม่มี request ที่ไม่ถูกต้องหลุดไปถึง cluster
+
 ```bash
 # field ว่าง -> 400
 curl -s -w ' STATUS=%{http_code}\n' "$base/api/spring-data/products/filter/term?field=&value=laptop"
 # range ไม่มี bound เลย -> 400 (Invalid filter)
 curl -s -w ' STATUS=%{http_code}\n' "$base/api/spring-data/products/filter/range?field=price&type=number"
+# range type ไม่รองรับ (ต้องเป็น number หรือ date เท่านั้น) -> 400
+curl -s -w ' STATUS=%{http_code}\n' "$base/api/java-client/products/filter/range?field=price&type=invalid&gte=1"
 # range bound ไม่ใช่ตัวเลข -> 400 (Invalid filter)
 curl -s -w ' STATUS=%{http_code}\n' "$base/api/java-client/products/filter/range?field=price&type=number&gte=abc"
+# range bound ไม่ finite (NaN / Infinity) -> 400
+curl -s -w ' STATUS=%{http_code}\n' "$base/api/spring-data/products/filter/range?field=price&type=number&gte=NaN"
+curl -s -w ' STATUS=%{http_code}\n' "$base/api/spring-data/products/filter/range?field=price&type=number&lte=Infinity"
 # terms values ว่าง (compose) -> 400
 curl -s -w ' STATUS=%{http_code}\n' -XPOST "$base/api/spring-data/products/filter/compose" \
   -H 'Content-Type: application/json' -d '{"terms":[{"field":"category","values":[]}]}'
+# terms values มี element ว่าง/null (compose) -> 400 (ใช้ได้ทั้ง terms และ mustNotTerms)
+curl -s -w ' STATUS=%{http_code}\n' -XPOST "$base/api/spring-data/products/filter/compose" \
+  -H 'Content-Type: application/json' -d '{"terms":[{"field":"category","values":["   "]}]}'
 # -> {"title":"Invalid request" หรือ "Invalid filter","status":400,...}
 ```
 - parameter ที่จำเป็น (`field`, `value`, `type`, `values`) ต้องไม่ว่าง — ถ้าขาด/ว่าง จะได้ **400** ก่อนเรียก Elasticsearch
-- `range` ต้องมีอย่างน้อยหนึ่ง bound และ numeric bound ต้องเป็นตัวเลข มิฉะนั้น **400** (`Invalid filter`)
+- **range `type` รองรับเฉพาะ `number` หรือ `date`** — ค่าชนิดอื่น (เช่น `invalid`) จะได้ **400** และ **ไม่** fall back เป็น numeric เงียบ ๆ (บังคับใช้ที่ `ProductFilters.range()` จึงปลอดภัยแม้เรียกตรง)
+- `range` ต้องมีอย่างน้อยหนึ่ง bound และ numeric bound ต้องเป็น**ตัวเลขที่ finite** — `abc`, `NaN`, `Infinity`, `-Infinity` ทั้งหมดได้ **400**
+- **terms `values` ต้องไม่ว่างและทุก element ต้องไม่เป็น `null`/blank** — บังคับใช้ทั้ง GET `/terms` (controller) และ POST `/compose` (bean validation `List<@NotBlank String>` ครอบคลุมทั้ง `terms` และ `mustNotTerms`)
 - `empty result` (ไม่มี hit) = **200** + `hits` ว่าง ไม่ใช่ 404
 
 ## 11. Testing
@@ -337,7 +349,9 @@ mvn clean verify
 - สับสน inclusive/exclusive → `gte`/`lte` รวม boundary, `gt`/`lt` ไม่รวม (ดู p06 ที่ราคา 1000 พอดี)
 - คาดว่า filter จะมี `_score` → filter คืน `0.0` เสมอ ถ้าต้องการ ranking ให้ใช้ query (`match`)
 - ใช้ `exists` แล้วงงว่าทำไมบาง document หาย → `null`/absent value ไม่ถือว่า exists (เช่น `discountPercent` ของ p02,p04,p07,p09)
-- ลืมใส่ `type` ให้ range → ต้องระบุ `number` หรือ `date` เพื่อให้ ES ตีความ bound ถูก
+- ลืมใส่ `type` ให้ range หรือใส่ค่าที่ไม่รองรับ → ต้องเป็น `number` หรือ `date` เท่านั้น ค่าอื่นได้ 400 (ไม่ fall back เป็น numeric)
+- ส่ง `NaN`/`Infinity` เป็น numeric bound → ไม่ใช่ค่า finite จึงได้ 400 (ไม่ใช่ bound ที่ถูกต้อง)
+- ส่ง terms `values` ที่มี element ว่าง/null → ได้ 400 (ต้อง non-blank ทุกตัว)
 - assert ค่า `_score` แบบ exact ใน query context → เปราะ ควรตรวจ `> 0` + membership
 
 ## 13. Production considerations

@@ -182,4 +182,59 @@ class SpringDataFilterControllerTest {
                 .expectBody().jsonPath("$.title").isEqualTo("Invalid request");
         verifyNoInteractions(service);
     }
+
+    // ---- Finding #3: terms values container-element validation (compose) ----
+
+    @Test
+    void composeTermsWithNullElementReturns400() {
+        String body = """
+                {"terms":[{"field":"category","values":[null]}]}
+                """;
+        webTestClient.post().uri("/api/spring-data/products/filter/compose")
+                .contentType(MediaType.APPLICATION_JSON).bodyValue(body)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.title").isEqualTo("Invalid request");
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void composeTermsWithBlankElementReturns400() {
+        String body = """
+                {"terms":[{"field":"category","values":["   "]}]}
+                """;
+        webTestClient.post().uri("/api/spring-data/products/filter/compose")
+                .contentType(MediaType.APPLICATION_JSON).bodyValue(body)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.title").isEqualTo("Invalid request");
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void composeMustNotTermsWithBlankElementReturns400() {
+        String body = """
+                {"mustNotTerms":[{"field":"brand","values":[""]}]}
+                """;
+        webTestClient.post().uri("/api/spring-data/products/filter/compose")
+                .contentType(MediaType.APPLICATION_JSON).bodyValue(body)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.title").isEqualTo("Invalid request");
+        verifyNoInteractions(service);
+    }
+
+    // ---- Finding #3: GET /terms element validation (controller-level) ----
+
+    @Test
+    void termsWithBlankElementReturns400AndSkipsService() {
+        webTestClient.get()
+                .uri(b -> b.path("/api/spring-data/products/filter/terms")
+                        .queryParam("field", "brand")
+                        .queryParam("values", "Apple").queryParam("values", "  ").build())
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.title").isEqualTo("Invalid request");
+        verifyNoInteractions(service);
+    }
 }

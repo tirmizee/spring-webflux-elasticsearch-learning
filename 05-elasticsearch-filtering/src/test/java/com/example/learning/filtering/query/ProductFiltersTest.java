@@ -87,6 +87,48 @@ class ProductFiltersTest {
         assertThrows(InvalidFilterException.class, () -> ProductFilters.range(bad));
     }
 
+    // ---- Finding #1: unsupported range type must not silently become numeric ----
+
+    @Test
+    void rangeWithUnsupportedTypeThrowsInvalidFilterEvenWhenInvokedDirectly() {
+        // A direct call (bypassing the DTO @Pattern) must still reject an unsupported type rather
+        // than falling back to a numeric range.
+        RangeFilter bad = new RangeFilter("price", "invalid", "100", null, null, null);
+        InvalidFilterException ex = assertThrows(
+                InvalidFilterException.class, () -> ProductFilters.range(bad));
+        assertTrue(ex.getMessage().contains("number' or 'date'"),
+                "message should explain the allowed types, was: " + ex.getMessage());
+    }
+
+    // ---- Finding #2: NaN / Infinity are not valid numeric bounds ----
+
+    @Test
+    void numericRangeRejectsNaN() {
+        RangeFilter nan = new RangeFilter("price", "number", "NaN", null, null, null);
+        assertThrows(InvalidFilterException.class, () -> ProductFilters.range(nan));
+    }
+
+    @Test
+    void numericRangeRejectsInfinity() {
+        RangeFilter inf = new RangeFilter("price", "number", "Infinity", null, null, null);
+        assertThrows(InvalidFilterException.class, () -> ProductFilters.range(inf));
+    }
+
+    @Test
+    void numericRangeRejectsNegativeInfinity() {
+        RangeFilter negInf = new RangeFilter("price", "number", null, "-Infinity", null, null);
+        assertThrows(InvalidFilterException.class, () -> ProductFilters.range(negInf));
+    }
+
+    @Test
+    void numericRangeAcceptsFiniteIntegerAndDecimalBounds() {
+        // Regression: ordinary finite bounds must still build a valid numeric range (unchanged).
+        Query q = ProductFilters.range(new RangeFilter("price", "number", "100", "2000.5", null, null));
+        assertTrue(q.range().isNumber());
+        assertEquals(100.0, q.range().number().gte());
+        assertEquals(2000.5, q.range().number().lte());
+    }
+
     @Test
     void filterContextWrapsClausesInBoolFilter() {
         Query q = ProductFilters.filterContext(List.of(

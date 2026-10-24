@@ -147,4 +147,44 @@ class JavaClientFilterControllerTest {
                 .expectBody().jsonPath("$.title").isEqualTo("Invalid request");
         verifyNoInteractions(service);
     }
+
+    // ---- Finding #3: terms values container-element validation ----
+
+    @Test
+    void composeTermsWithBlankElementReturns400() {
+        String body = """
+                {"terms":[{"field":"category","values":["   "]}]}
+                """;
+        webTestClient.post().uri("/api/java-client/products/filter/compose")
+                .contentType(MediaType.APPLICATION_JSON).bodyValue(body)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.title").isEqualTo("Invalid request");
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void composeMustNotTermsWithNullElementReturns400() {
+        String body = """
+                {"mustNotTerms":[{"field":"brand","values":[null]}]}
+                """;
+        webTestClient.post().uri("/api/java-client/products/filter/compose")
+                .contentType(MediaType.APPLICATION_JSON).bodyValue(body)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.title").isEqualTo("Invalid request");
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void termsWithBlankElementReturns400AndSkipsService() {
+        webTestClient.get()
+                .uri(b -> b.path("/api/java-client/products/filter/terms")
+                        .queryParam("field", "brand")
+                        .queryParam("values", "Apple").queryParam("values", "  ").build())
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.title").isEqualTo("Invalid request");
+        verifyNoInteractions(service);
+    }
 }

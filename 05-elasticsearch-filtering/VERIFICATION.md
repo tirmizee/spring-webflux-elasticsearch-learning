@@ -109,3 +109,83 @@ Failsafe (integration) — `integration.FilteringIT` — **15**, 0 failures (ter
 
 ## Overall status
 **COMPLETED** — `mvn clean verify` passes with **36 unit + 15 integration** tests against a real security-enabled Elasticsearch 9.4.8 using a least-privilege API key; real cURL on a running app (:8084) confirms term/terms (keyword + boolean), range (numeric inclusive/exclusive and date), exists, and composed bool filters across both clients, with cross-client consistency, deterministic boundary behavior, filter-context `_score` = 0.0 vs query-context `_score` > 0, empty-result-as-200, and 400 validation. No credential leakage. Chapters 01–04 untouched; Chapter 05 runs independently.
+
+---
+
+# Chapter 05 Re-verification — input validation findings #1, #2, #3
+
+> Separate entry for the code-review follow-up that hardened input validation. The original
+> verification report above is preserved unchanged.
+
+- **Timestamp (with timezone):** 2026-10-25 00:46:37 +07 (ICT, Asia/Bangkok)
+- **Source revision:** branch `main`, repository HEAD `5aa4f32` (`feat(05-elasticsearch-filtering): add term/terms, range, exists and bool filter chapter`) at the time of this run; the validation changes were verified from the **uncommitted working tree** on top of `5aa4f32`.
+- **Environment:** Java 21.0.2 (Temurin); Maven 3.9.9 (JAVA_HOME→21); Spring Boot 4.1.2; Spring Data ES 6.1.2; ES client/server 9.4.8; Testcontainers 2.0.5; Docker 25.0.2.
+
+## Findings addressed
+- **Finding #1 — reject unsupported range types.** `ProductFilters.range()` now rejects any `type` other than `number`/`date` with `InvalidFilterException` (→ 400), so an unsupported type can never silently fall back to a numeric range, even when invoked directly. The DTO `@Pattern(regexp = "number|date")` on `RangeFilter.type` continues to validate the POST compose body. Status: **FIXED**.
+- **Finding #2 — reject non-finite numeric bounds.** `ProductFilters.parseDouble()` now checks `Double.isFinite(...)` after parsing, so `NaN`/`Infinity`/`-Infinity` are rejected with `InvalidFilterException` (→ 400). Malformed-string handling (`NumberFormatException`) is preserved. Status: **FIXED**.
+- **Finding #3 — validate every terms value.** `TermsFilter.values` is now `List<@NotBlank String>`, rejecting `null`/empty/whitespace-only elements via the container-element constraint, activated by the existing `List<@Valid TermsFilter>` in `FilterSearchRequest` (covers both `terms` and `mustNotTerms`). The GET `/terms` controller helper was tightened to reject any null/blank element for a consistent contract. Status: **FIXED**.
+
+## Change under test
+- `query/ProductFilters.java` — `range()` now throws on unsupported type (defensive); `parseDouble()` adds a finite-value check.
+- `dto/TermsFilter.java` — `values` element type is `@NotBlank`; Javadoc updated.
+- `controller/SpringDataFilterController.java` and `controller/JavaClientFilterController.java` — `requireNonEmpty(...)` now rejects any null/blank element (previously passed if any element was non-blank).
+- No change to mappings, Query DSL semantics, `bool.filter`/`must_not` composition, full-text behavior, scoring, reactive/blocking execution, endpoint paths, data initialization, or auth.
+
+## Gate results (this run)
+| Gate | Command / evidence | Expected | Actual | Status |
+|---|---|---|---|---|
+| Maven build + unit tests | `mvn clean verify` (surefire) | BUILD SUCCESS | 48 unit tests, 0 failures | PASS |
+| Integration tests (failsafe, real secured ES) | `mvn clean verify` (failsafe) | all pass | 17 tests, 0 failures | PASS |
+| Full `mvn clean verify` | exit code + final line | BUILD SUCCESS | BUILD SUCCESS | PASS |
+| Finding #1: unsupported range type (GET both clients + compose) | real cURL → 400 | 400 | 400 (SD/JC GET, compose) | PASS |
+| Finding #1: valid number/date types preserved | real cURL → 200 | 200 | 200 | PASS |
+| Finding #2: NaN / Infinity / -Infinity / abc | real cURL → 400 | 400 | 400 (all four) | PASS |
+| Finding #2: valid int/decimal preserved | real cURL → 200 | 200 | 200 | PASS |
+| Finding #3: terms null/blank/empty (compose terms + mustNotTerms) | real cURL → 400 | 400 | 400 | PASS |
+| Finding #3: GET /terms blank element | real cURL → 400 | 400 | 400 | PASS |
+| Finding #3: valid terms preserved | real cURL → 200 | 200 | 200 | PASS |
+| Regression: valid range/terms ids unchanged | real cURL + `jq` | same ids as before | identical | PASS |
+| Sanitized error body | `jq` on 400 responses | no key/host/stack | `ProblemDetail` (title/status/detail only) | PASS |
+
+## Actual test counts (this run)
+Surefire (unit) — total **48**, 0 failures:
+- `controller.JavaClientFilterControllerTest` — 12
+- `controller.SpringDataFilterControllerTest` — 16
+- `query.ProductFiltersTest` — 16
+- `service.JavaClientFilterServiceTest` — 4
+
+Failsafe (integration) — `integration.FilteringIT` — **17**, 0 failures. Final line: `BUILD SUCCESS`.
+
+## Verified cURL (real app on :8084 + real secured ES 9.4.8)
+| Request | Result |
+|---|---|
+| `GET range?field=price&type=invalid&gte=1` (both clients) | 400 `Invalid filter` (`range type must be 'number' or 'date' but was 'invalid'`) |
+| `POST compose` range `type=wildcard` | 400 |
+| `GET range?field=price&type=number&gte=1000` | 200, ids `{p01,p02,p03,p04,p05,p06}` (unchanged) |
+| `GET range?field=releaseDate&type=date&gte=2024-01-01` | 200 |
+| `GET range?field=price&type=number&gte=NaN` | 400 `Invalid filter` (`must be a finite number but was 'NaN'`) |
+| `GET range?field=price&type=number&lte=Infinity` | 400 |
+| `GET range?field=price&type=number&gt=-Infinity` | 400 |
+| `GET range?field=price&type=number&gte=abc` | 400 |
+| `GET range?field=price&type=number&gte=100` / `gte=99.99` | 200 |
+| `POST compose` terms `[null]` / `[""]` / `["   "]` / `[]` | 400 |
+| `POST compose` mustNotTerms `[null]` | 400 |
+| `GET terms?field=brand&values=Apple&values=%20%20` | 400 |
+| `POST compose` terms `["laptop"]` (valid) | 200 |
+| `GET range price>1000` (exclusive boundary) | 200, ids `{p01,p02,p03,p04,p05}` (unchanged) |
+| `GET terms brand=Apple,Dell` | 200, ids `{p01,p02,p03,p06,p10}` (unchanged) |
+
+All error bodies are generic `ProblemDetail`s (title/status/detail) — no API key, host, URI, or stack trace. No invalid request reached Elasticsearch (the invalid-filter checks run before the ES call).
+
+## New / updated tests
+- `ProductFiltersTest` (+5): unsupported type when invoked directly; `NaN`; `Infinity`; `-Infinity`; finite int/decimal bounds preserved.
+- `SpringDataFilterControllerTest` (+4): compose terms null element; compose terms blank element; compose mustNotTerms blank element; GET `/terms` blank element.
+- `JavaClientFilterControllerTest` (+3): compose terms blank element; compose mustNotTerms null element; GET `/terms` blank element.
+- `FilteringIT` (+2): unsupported range type rejected by both services; non-finite numeric bounds rejected by both services (proving fail-fast before ES).
+
+## Cleanup
+App process stopped; `docker compose -p ch05 down` removed the container and network (no named volume defined → no persistent data deleted); temp API-key file removed.
+
+## Status
+PASS — findings #1, #2, #3 fixed and verified end-to-end. Existing valid behavior (mappings, Query DSL, filter/query context, scoring, two-client consistency, endpoint contracts) preserved. Chapters 01–04 untouched; root README unchanged.

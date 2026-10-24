@@ -5,6 +5,7 @@ import com.example.learning.filtering.dto.FilterSearchRequest;
 import com.example.learning.filtering.dto.ProductHit;
 import com.example.learning.filtering.dto.RangeFilter;
 import com.example.learning.filtering.dto.TermsFilter;
+import com.example.learning.filtering.exception.InvalidFilterException;
 import com.example.learning.filtering.service.JavaClientFilterService;
 import com.example.learning.filtering.service.SpringDataFilterService;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -301,5 +303,26 @@ class FilteringIT {
         assertEquals("java-client", jc.client());
         assertFalse(sd.hits().isEmpty());
         assertEquals(ids(sd), ids(jc));
+    }
+
+    // ---- validation through the real service (findings #1 and #2) ----
+    // These prove the invalid request fails fast (InvalidFilterException -> HTTP 400) and never
+    // reaches Elasticsearch, while valid numeric/date ranges keep working against real ES above.
+
+    @Test
+    void unsupportedRangeTypeIsRejectedByBothServices() {
+        RangeFilter bad = new RangeFilter("price", "invalid", "100", null, null, null);
+        assertThrows(InvalidFilterException.class, () -> springData.range(bad));
+        assertThrows(InvalidFilterException.class, () -> javaClient.range(bad));
+    }
+
+    @Test
+    void nonFiniteNumericBoundsAreRejectedByBothServices() {
+        RangeFilter nan = new RangeFilter("price", "number", "NaN", null, null, null);
+        RangeFilter inf = new RangeFilter("rating", "number", null, null, "Infinity", null);
+        assertThrows(InvalidFilterException.class, () -> springData.range(nan));
+        assertThrows(InvalidFilterException.class, () -> javaClient.range(nan));
+        assertThrows(InvalidFilterException.class, () -> springData.range(inf));
+        assertThrows(InvalidFilterException.class, () -> javaClient.range(inf));
     }
 }

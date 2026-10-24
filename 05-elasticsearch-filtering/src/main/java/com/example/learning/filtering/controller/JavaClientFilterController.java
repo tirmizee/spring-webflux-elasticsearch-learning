@@ -93,8 +93,11 @@ public class JavaClientFilterController {
     }
 
     private static void requireNonEmpty(String name, List<String> values) {
-        if (values == null || values.isEmpty() || values.stream().allMatch(v -> v == null || v.isBlank())) {
+        if (values == null || values.isEmpty()) {
             throw new ServerWebInputException(name + " must not be empty");
+        }
+        if (values.stream().anyMatch(v -> v == null || v.isBlank())) {
+            throw new ServerWebInputException(name + " must not contain blank entries");
         }
     }
 }

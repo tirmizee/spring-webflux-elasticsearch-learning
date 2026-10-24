@@ -57,8 +57,13 @@ public final class ProductFilters {
 
     /**
      * {@code range} filter. {@code gte}/{@code lte} are inclusive; {@code gt}/{@code lt} exclusive.
-     * The variant (number vs date) is chosen from {@link RangeFilter#type()}. Throws
-     * {@link InvalidFilterException} when no bound is set or a numeric bound is not a number.
+     * The variant is chosen from {@link RangeFilter#type()}, which must be {@code "number"} or
+     * {@code "date"}. Throws {@link InvalidFilterException} when the type is unsupported, no bound
+     * is set, or a numeric bound is not a finite number.
+     *
+     * <p>This method is defensive on purpose: even when invoked directly (bypassing the DTO's
+     * {@code @Pattern} validation on the compose endpoint), an unsupported type can never silently
+     * fall back to a numeric range.
      */
     public static Query range(RangeFilter filter) {
         if (!filter.hasAnyBound()) {
@@ -68,7 +73,11 @@ public final class ProductFilters {
         if ("date".equals(filter.type())) {
             return dateRange(filter);
         }
-        return numberRange(filter);
+        if ("number".equals(filter.type())) {
+            return numberRange(filter);
+        }
+        throw new InvalidFilterException(
+                "range type must be 'number' or 'date' but was '" + filter.type() + "'");
     }
 
     private static Query numberRange(RangeFilter f) {
@@ -161,11 +170,18 @@ public final class ProductFilters {
     }
 
     private static double parseDouble(String field, String value) {
+        double parsed;
         try {
-            return Double.parseDouble(value.trim());
+            parsed = Double.parseDouble(value.trim());
         } catch (NumberFormatException e) {
             throw new InvalidFilterException(
                     "range bound on '" + field + "' must be numeric but was '" + value + "'");
         }
+        // Double.parseDouble accepts "NaN"/"Infinity"/"-Infinity"; these are not valid range bounds.
+        if (!Double.isFinite(parsed)) {
+            throw new InvalidFilterException(
+                    "range bound on '" + field + "' must be a finite number but was '" + value + "'");
+        }
+        return parsed;
     }
 }
