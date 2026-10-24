@@ -22,7 +22,7 @@
 | 02 | [`02-api-key-authentication`](02-api-key-authentication/) | API key security + client setup | ✅ Verified |
 | 03 | [`03-document-crud`](03-document-crud/) | Index / get / update / delete | ✅ Verified |
 | 04 | [`04-search-queries`](04-search-queries/) | Term, match, bool queries | ✅ Verified |
-| 05 | `05-elasticsearch-filtering` | Term/terms, range, exists, bool filter, query vs filter context | ⏳ Planned |
+| 05 | [`05-elasticsearch-filtering`](05-elasticsearch-filtering/) | Term/terms, range, exists, bool filter, query vs filter context | ✅ Verified |
 | 06 | `06-custom-analyzers` | Standard, Thai, ngram analyzers | ⏳ Planned |
 | 07 | `07-sorting-pagination` | Sorting, pagination, search_after | ⏳ Planned |
 | 08 | `08-fuzzy-search` | Fuzzy, prefix, partial search | ⏳ Planned |
